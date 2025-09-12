@@ -3,8 +3,8 @@ import { Container, Row, Col, Button, Form, ListGroup, Tab } from 'react-bootstr
 
 const TeacherDashboard: React.FC = () => {
 	const [activeKey, setActiveKey] = useState('dashboard');
-	const [eventTarget, setEventTarget] = useState('class');
-	const [eventClass, setEventClass] = useState('');
+	// const [eventTarget, setEventTarget] = useState('class');
+	// const [eventClass, setEventClass] = useState('');
 
 	return (
 		<>
