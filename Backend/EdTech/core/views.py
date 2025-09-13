@@ -1,22 +1,30 @@
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import (
-    AttendanceRecord, GradeRecord, StudentFlag, Event,
-    User, AuditLog, USSDConfig
-)
-from .serializers import (
-    AttendanceRecordSerializer, GradeRecordSerializer, StudentFlagSerializer,
-    EventSerializer, UserSerializer, AuditLogSerializer, USSDConfigSerializer
-)
-from .permissions import IsTeacher, IsAdmin
-from .serializers import RegisterSerializer, UserSerializer
+from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 
+from .models import AttendanceRecord, GradeRecord, StudentFlag, Event, USSDConfig
+from .serializers import (
+    AttendanceRecordSerializer,
+    GradeRecordSerializer,
+    StudentFlagSerializer,
+    EventSerializer,
+    USSDConfigSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
+
+from .permissions import IsTeacher, IsAdmin
+
 User = get_user_model()
+
+
+# Auth / Register
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+
 
 # ----------------------
 # TEACHER VIEWS
