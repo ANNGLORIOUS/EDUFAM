@@ -160,8 +160,34 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 
+# Frontend reset page url
+FRONTEND_URL = "http://localhost:3000"
+
+#Send email using  SMTP:
+
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+# DEFAULT_FROM_EMAIL = 'noreply@schoolsystem.com'
+
+
+# Use API instead of SMTP
+EMAIL_USE_API = True  # True = use API, False = use SMTP
+
+#Send email using API
+# Mailtrap API (sandbox for testing)
+MAILTRAP_API_TOKEN = os.getenv('MAILTRAP_API_TOKEN')
+MAILTRAP_INBOX_ID = os.getenv('MAILTRAP_INBOX_ID')
+DEFAULT_FROM_EMAIL = 'noreply@schoolsystem.com'
+
+# Mailtrap sending API (live) 
+# MAILTRAP_SENDING_API_TOKEN = "your_live_api_token_here"
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(hours=24),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,

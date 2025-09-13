@@ -10,6 +10,7 @@ djangorestframework==3.15.2
 djangorestframework_simplejwt==5.5.1
 google-auth==2.40.3
 idna==3.10
+mailtrap==2.1.0
 Markdown==3.9
 mysqlclient==2.2.7
 phonenumbers==9.0.13

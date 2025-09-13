@@ -22,9 +22,10 @@ urlpatterns = [
     path('profile/', views.get_profile, name='get_profile'),
     path('profile/update/', views.update_profile, name='update_profile'),
 
-    # optional password endpoints
-    # path('password-reset/request/', views.PasswordResetRequestView.as_view(), name='password_reset_request'),
-    # path('password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
-    # path('password-change/', views.PasswordChangeView.as_view(), name='password_change'),
+     # Password Management endpoints 
+    path('password/change/', views.change_password, name='change_password'),
+    path('password/reset/', views.request_password_reset, name='request_password_reset'),
+    path('password/reset/confirm/', views.confirm_password_reset, name='confirm_password_reset'),
 ]
+
 
