@@ -11,7 +11,6 @@ class MockSMSService:
     
     @staticmethod
     def send_sms(phone_number, message):
-        # In production, integrate with AfricasTalking, Twilio, etc.
         logger.info(f"SMS to {phone_number}: {message}")
         print(f"📱 SMS to {phone_number}: {message}")
         return {"status": "success", "message": "SMS sent"}
@@ -32,10 +31,8 @@ class EmailService:
                 print("MAILTRAP_API_TOKEN not configured")
                 return False
 
-            # Use sandbox API endpoint with inbox ID
             inbox_id = getattr(settings, "MAILTRAP_INBOX_ID", None)
             if inbox_id:
-                # Sandbox API (for testing)
                 api_url = f"https://sandbox.api.mailtrap.io/api/send/{inbox_id}"
                 headers = {
                     "Api-Token": token,
@@ -49,7 +46,6 @@ class EmailService:
                     "html": f"<pre>{message}</pre>"  
                 }
             else:
-                # Production API (requires domain verification)
                 api_url = "https://send.api.mailtrap.io/api/send"
                 headers = {
                     "Authorization": f"Bearer {token}",  

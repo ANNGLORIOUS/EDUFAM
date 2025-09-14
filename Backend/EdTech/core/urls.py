@@ -1,4 +1,3 @@
-# core/urls.py
 from django.urls import path, include
 from django.urls import path, include
 from core.views.parent_views import (
@@ -48,11 +47,11 @@ urlpatterns = [
 
 
 
-    # Teacher endpoints (to be created later)
+    # Teacher endpoints 
     
 
 
-    # Admin endpoints (to be created later)  
+    # Admin endpoints   
     
     
 ]

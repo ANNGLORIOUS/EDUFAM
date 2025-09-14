@@ -32,7 +32,6 @@ class MyTokenObtainPairView(TokenObtainPairView):
 logger = logging.getLogger(__name__)
 
 def get_tokens_for_user(user):
-    """Generate JWT tokens for user"""
     refresh = RefreshToken.for_user(user)
     return {
         'access_token': str(refresh.access_token),
@@ -44,7 +43,6 @@ def get_tokens_for_user(user):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
-    """Register a new user"""
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
@@ -72,7 +70,6 @@ def register_user(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
-    """Login with username/email and password"""
     username_or_email = request.data.get('username')
     password = request.data.get('password')
     
@@ -113,7 +110,6 @@ def login_user(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def request_otp(request):
-    """Request OTP via SMS or Email"""
     serializer = OTPRequestSerializer(data=request.data)
     if serializer.is_valid():
         phone_number = serializer.validated_data.get('phone_number')
@@ -156,7 +152,6 @@ def request_otp(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_otp(request):
-    """Verify OTP and login user"""
     serializer = OTPVerifySerializer(data=request.data)
     if serializer.is_valid():
         phone_number = serializer.validated_data.get('phone_number')
@@ -230,7 +225,6 @@ def verify_otp(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def google_login(request):
-    """Login with Google OAuth token"""
     serializer = GoogleAuthSerializer(data=request.data)
     if serializer.is_valid():
         token = serializer.validated_data['token']
@@ -289,7 +283,6 @@ def google_login(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_user(request):
-    """Logout user (blacklist refresh token)"""
     try:
         refresh_token = request.data.get('refresh_token')
         if refresh_token:
@@ -309,7 +302,6 @@ def logout_user(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):
-    """Change user password when logged in"""
     serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
     
     if serializer.is_valid():
@@ -337,7 +329,6 @@ def change_password(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def request_password_reset(request):
-    """Request password reset via email"""
     serializer = PasswordResetRequestSerializer(data=request.data)
     if serializer.is_valid():
         email = serializer.validated_data.get('email')
@@ -373,10 +364,10 @@ def request_password_reset(request):
         "details": serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
+# Confirm password reset 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def confirm_password_reset(request):
-    """Confirm password reset with token"""
     serializer = PasswordResetConfirmSerializer(data=request.data)
     if serializer.is_valid():
         token = serializer.validated_data.get('token')
@@ -390,18 +381,15 @@ def confirm_password_reset(request):
                     "error": "Reset link has expired. Please request a new one."
                 }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Reset password
             user = reset_token.user
             user.set_password(new_password)
             user.save()
 
-            # Mark token as used
             reset_token.is_used = True
             reset_token.save()
 
             logger.info(f"Password reset completed for user {user.username}")
 
-            # Generate new JWT tokens
             tokens = get_tokens_for_user(user)
 
             return Response({

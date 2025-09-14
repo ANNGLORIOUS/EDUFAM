@@ -4,9 +4,9 @@ from django.utils import timezone
 from decimal import Decimal
 import uuid
 
-
+#Parent/Guardian model
 class Parent(models.Model):
-    """Parent/Guardian model linked to User"""
+    
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE,
@@ -46,9 +46,8 @@ class Parent(models.Model):
     def phone_number(self):
         return self.user.phone_number
 
-
+# School model
 class School(models.Model):
-    """School model for multi-school support"""
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=20, unique=True)
     address = models.TextField()
@@ -62,10 +61,9 @@ class School(models.Model):
     def __str__(self):
         return self.name
 
-
+# Academic Year model
 class AcademicYear(models.Model):
-    """Academic Year model"""
-    name = models.CharField(max_length=20)  # e.g., "2024-2025"
+    name = models.CharField(max_length=20)  
     start_date = models.DateField()
     end_date = models.DateField()
     is_current = models.BooleanField(default=False)
@@ -81,13 +79,11 @@ class AcademicYear(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_current:
-            # Ensure only one academic year is current per school
             AcademicYear.objects.filter(school=self.school, is_current=True).update(is_current=False)
         super().save(*args, **kwargs)
 
-
+# Term/Semester model
 class Term(models.Model):
-    """Term/Semester model"""
     TERM_CHOICES = [
         (1, 'Term 1'),
         (2, 'Term 2'),
@@ -110,16 +106,14 @@ class Term(models.Model):
 
     def save(self, *args, **kwargs):
         if self.is_current:
-            # Ensure only one term is current per academic year
             Term.objects.filter(academic_year=self.academic_year, is_current=True).update(is_current=False)
         super().save(*args, **kwargs)
 
-
+# ClassRoom model
 class ClassRoom(models.Model):
-    """Class/Grade model"""
-    name = models.CharField(max_length=50)  # e.g., "Grade 1A", "Form 4 Blue"
-    grade_level = models.IntegerField()  # 1-12 or as per system
-    section = models.CharField(max_length=10, blank=True, null=True)  # A, B, C, etc.
+    name = models.CharField(max_length=50)  
+    grade_level = models.IntegerField()  
+    section = models.CharField(max_length=10, blank=True, null=True)  
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='classes')
     academic_year = models.ForeignKey(AcademicYear, on_delete=models.CASCADE, related_name='classes')
     class_teacher = models.ForeignKey(
@@ -145,14 +139,13 @@ class ClassRoom(models.Model):
     def student_count(self):
         return self.students.filter(is_active=True).count()
 
-
+# Subject model
 class Subject(models.Model):
-    """Subject model"""
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=10)
     description = models.TextField(blank=True, null=True)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='subjects')
-    is_core = models.BooleanField(default=False)  # Core vs Optional subjects
+    is_core = models.BooleanField(default=False)  
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -163,38 +156,31 @@ class Subject(models.Model):
     def __str__(self):
         return f"{self.name} ({self.code})"
 
-
+# Student model
 class Student(models.Model):
-    """Student model"""
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
     ]
 
-    # Personal Information
     admission_number = models.CharField(max_length=20, unique=True)
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     
-    # School Information
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='students')
     current_class = models.ForeignKey(ClassRoom, on_delete=models.SET_NULL, null=True, related_name='students')
     admission_date = models.DateField()
     
-    # Parent/Guardian Relations
     parents = models.ManyToManyField(Parent, related_name='children', through='StudentParentRelation')
     
-    # Contact Information
     address = models.TextField(blank=True, null=True)
     
-    # Medical Information
     medical_conditions = models.TextField(blank=True, null=True)
     allergies = models.TextField(blank=True, null=True)
     blood_group = models.CharField(max_length=5, blank=True, null=True)
     
-    # Status
     is_active = models.BooleanField(default=True)
     graduation_date = models.DateField(blank=True, null=True)
     
@@ -216,9 +202,8 @@ class Student(models.Model):
         today = date.today()
         return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
 
-
+#Student-Parent relationship model
 class StudentParentRelation(models.Model):
-    """Through model for Student-Parent relationship"""
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     parent = models.ForeignKey(Parent, on_delete=models.CASCADE)
     relationship_type = models.CharField(
@@ -241,9 +226,8 @@ class StudentParentRelation(models.Model):
     def __str__(self):
         return f"{self.parent} - {self.student} ({self.relationship_type})"
 
-
+# GradeRecord model
 class GradeRecord(models.Model):
-    """Grade/Marks record"""
     ASSESSMENT_TYPES = [
         ('assignment', 'Assignment'),
         ('quiz', 'Quiz'),
@@ -264,7 +248,7 @@ class GradeRecord(models.Model):
     )
     
     assessment_type = models.CharField(max_length=20, choices=ASSESSMENT_TYPES)
-    assessment_name = models.CharField(max_length=100)  # e.g., "Math Quiz 1"
+    assessment_name = models.CharField(max_length=100)  
     total_marks = models.DecimalField(max_digits=6, decimal_places=2)
     obtained_marks = models.DecimalField(max_digits=6, decimal_places=2)
     
@@ -300,9 +284,8 @@ class GradeRecord(models.Model):
         else:
             return 'F'
 
-
+# AttendanceRecord model
 class AttendanceRecord(models.Model):
-    """Attendance record"""
     STATUS_CHOICES = [
         ('present', 'Present'),
         ('absent', 'Absent'),
@@ -314,9 +297,8 @@ class AttendanceRecord(models.Model):
     date = models.DateField()
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
     
-    # Optional: Track by period/subject
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, blank=True, null=True)
-    period = models.IntegerField(blank=True, null=True)  # Period number
+    period = models.IntegerField(blank=True, null=True)  
     
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -336,10 +318,9 @@ class AttendanceRecord(models.Model):
         subject_info = f" - {self.subject}" if self.subject else ""
         return f"{self.student} - {self.date} - {self.get_status_display()}{subject_info}"
 
-
+# FeeStructure model
 class FeeStructure(models.Model):
-    """Fee structure for different classes/grades"""
-    name = models.CharField(max_length=100)  # e.g., "Tuition Fee", "Transport Fee"
+    name = models.CharField(max_length=100)  
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     class_rooms = models.ManyToManyField(ClassRoom, related_name='fee_structures')
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='fee_structures')
@@ -357,9 +338,8 @@ class FeeStructure(models.Model):
     def __str__(self):
         return f"{self.name} - {self.amount} ({self.term})"
 
-
+# FeeAccount model
 class FeeAccount(models.Model):
-    """Student fee account"""
     student = models.OneToOneField(Student, on_delete=models.CASCADE, related_name='fee_account')
     total_fee_due = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     total_paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
@@ -380,7 +360,7 @@ class FeeAccount(models.Model):
         self.balance = self.total_fee_due - self.total_paid
         self.save()
 
-
+# Payment model
 class Payment(models.Model):
     """Payment record"""
     PAYMENT_METHODS = [
@@ -403,13 +383,11 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
     
-    # Payment details
     transaction_reference = models.CharField(max_length=100, blank=True, null=True)
     mpesa_receipt = models.CharField(max_length=20, blank=True, null=True)
     
     status = models.CharField(max_length=20, choices=PAYMENT_STATUS, default='pending')
     
-    # Tracking
     paid_by = models.ForeignKey(Parent, on_delete=models.CASCADE, related_name='payments')
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -437,15 +415,13 @@ class Payment(models.Model):
             self.payment_id = str(uuid.uuid4())
         super().save(*args, **kwargs)
         
-        # Update fee account balance when payment is completed
         if self.status == 'completed':
             fee_account, created = FeeAccount.objects.get_or_create(student=self.student)
             fee_account.total_paid += self.amount
             fee_account.update_balance()
 
-
+# MessageThread model
 class MessageThread(models.Model):
-    """Message thread between parent and teacher/admin"""
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='message_threads')
     student = models.ForeignKey(Student, on_delete=models.CASCADE, blank=True, null=True, related_name='message_threads')
     subject = models.CharField(max_length=200)
@@ -464,9 +440,8 @@ class MessageThread(models.Model):
     def last_message(self):
         return self.messages.last()
 
-
+# Message model
 class Message(models.Model):
-    """Individual message in a thread"""
     thread = models.ForeignKey(MessageThread, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
     content = models.TextField()
@@ -482,9 +457,8 @@ class Message(models.Model):
     def __str__(self):
         return f"Message from {self.sender} - {self.created_at}"
 
-
+# Consent model
 class Consent(models.Model):
-    """Data consent management"""
     CONSENT_TYPES = [
         ('data_sharing', 'Data Sharing'),
         ('medical_info', 'Medical Information'),
@@ -524,9 +498,8 @@ class Consent(models.Model):
         self.revoked_at = timezone.now()
         self.save()
 
-
+# AuditLog model
 class AuditLog(models.Model):
-    """Audit log for tracking important actions"""
     ACTION_TYPES = [
         ('create', 'Create'),
         ('update', 'Update'),
@@ -540,10 +513,10 @@ class AuditLog(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='audit_logs')
     action_type = models.CharField(max_length=20, choices=ACTION_TYPES)
-    model_name = models.CharField(max_length=50)  # Model that was affected
-    object_id = models.CharField(max_length=50)  # ID of affected object
+    model_name = models.CharField(max_length=50)  
+    object_id = models.CharField(max_length=50)  
     
-    changes = models.JSONField(blank=True, null=True)  # Store what changed
+    changes = models.JSONField(blank=True, null=True)  
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     user_agent = models.TextField(blank=True, null=True)
     

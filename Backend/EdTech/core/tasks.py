@@ -1,4 +1,3 @@
-# core/tasks.py
 from celery import shared_task
 from django.core.mail import send_mail
 from django.conf import settings
@@ -13,15 +12,13 @@ from core.models import Payment, Message, Parent, AuditLog
 
 logger = logging.getLogger(__name__)
 
+# Send SMS notification for fee payment
 @shared_task(bind=True, max_retries=3)
 def send_payment_sms(self, payment_id, phone_number):
-    """
-    Send SMS notification for fee payment
-    """
+   
     try:
         payment = Payment.objects.get(id=payment_id)
         
-        # Format message
         message_text = (
             f"Payment Confirmed!\n"
             f"Student: {payment.student.get_full_name()}\n"
@@ -32,29 +29,24 @@ def send_payment_sms(self, payment_id, phone_number):
             f"Date: {payment.payment_date.strftime('%d/%m/%Y %H:%M')}"
         )
         
-        # Send SMS (integrate with your SMS provider)
         success = send_sms_notification(phone_number, message_text)
         
         if success:
             logger.info(f"Payment SMS sent successfully for payment {payment_id}")
         else:
             logger.error(f"Failed to send payment SMS for payment {payment_id}")
-            # Retry the task
             raise Exception("SMS sending failed")
             
     except Payment.DoesNotExist:
         logger.error(f"Payment {payment_id} not found")
     except Exception as exc:
         logger.error(f"Error sending payment SMS: {exc}")
-        # Retry with exponential backoff
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
 
-
+# Send notification for new message
 @shared_task(bind=True, max_retries=3)
 def send_message_notification(self, message_id, recipient_id):
-    """
-    Send notification for new message
-    """
+   
     try:
         message = Message.objects.select_related(
             'sender', 'thread', 'thread__student'
@@ -62,17 +54,14 @@ def send_message_notification(self, message_id, recipient_id):
         
         recipient = User.objects.get(id=recipient_id)
         
-        # Prepare notification data
         sender_name = message.sender.get_full_name() or message.sender.username
         student_info = f" about {message.thread.student.get_full_name()}" if message.thread.student else ""
         
-        # Send email notification
         if recipient.email and recipient.is_email_verified:
             email_sent = send_message_email(message, recipient)
             if email_sent:
                 logger.info(f"Message email sent to {recipient.email}")
         
-        # Send SMS notification if recipient has phone
         if recipient.phone_number and recipient.is_phone_verified:
             sms_text = (
                 f"New message from {sender_name}{student_info}:\n"
@@ -90,19 +79,16 @@ def send_message_notification(self, message_id, recipient_id):
         logger.error(f"Error sending message notification: {exc}")
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
 
-
+# Send email notification for new message
 @shared_task
 def send_message_email(message, recipient):
-    """
-    Send email notification for new message
-    """
+   
     try:
         sender_name = message.sender.get_full_name() or message.sender.username
         student_info = f" regarding {message.thread.student.get_full_name()}" if message.thread.student else ""
         
         subject = f"New Message from {sender_name}{student_info}"
         
-        # Render email template
         html_message = render_to_string('emails/message_notification.html', {
             'recipient_name': recipient.get_full_name() or recipient.username,
             'sender_name': sender_name,
@@ -138,17 +124,14 @@ def send_message_email(message, recipient):
         logger.error(f"Failed to send email to {recipient.email}: {e}")
         return False
 
-
+# Send SMS notification using SMS provider (e.g., Twilio, Africa's Talking)
 @shared_task
 def send_sms_notification(phone_number, message_text):
-    """
-    Send SMS notification using SMS provider (e.g., Twilio, Africa's Talking)
-    """
+   
     if settings.DEBUG:
         print(f"[DEV] SMS to {phone_number}: {message_text}")
         return True
     try:
-        # Example using Africa's Talking (adjust based on your SMS provider)
         api_key = getattr(settings, 'AFRICAS_TALKING_API_KEY', None)
         username = getattr(settings, 'AFRICAS_TALKING_USERNAME', None)
         
@@ -156,7 +139,6 @@ def send_sms_notification(phone_number, message_text):
             logger.warning("SMS credentials not configured")
             return False
         
-        # For Africa's Talking
         url = "https://api.sandbox.africastalking.com/version1/messaging"
         headers = {
             'apiKey': api_key,
@@ -192,13 +174,10 @@ def send_sms_notification(phone_number, message_text):
         logger.error(f"Error sending SMS to {phone_number}: {e}")
         return False
 
-
+# Send bulk notifications to multiple recipients
 @shared_task
 def send_bulk_notification(recipient_ids, message_text, notification_type='sms'):
-    """
-    Send bulk notifications to multiple recipients
-    """
-    
+        
     recipients = User.objects.filter(id__in=recipient_ids)
     success_count = 0
     failed_count = 0
@@ -229,12 +208,10 @@ def send_bulk_notification(recipient_ids, message_text, notification_type='sms')
     logger.info(f"Bulk notification completed: {success_count} successful, {failed_count} failed")
     return {'success_count': success_count, 'failed_count': failed_count}
 
-
+# Create audit log entry
 @shared_task
 def create_audit_log(user_id, action_type, model_name, object_id, changes=None, ip_address=None, user_agent=None):
-    """
-    Create audit log entry asynchronously
-    """
+    
     try:
         user = User.objects.get(id=user_id)
         
@@ -255,12 +232,10 @@ def create_audit_log(user_id, action_type, model_name, object_id, changes=None, 
     except Exception as e:
         logger.error(f"Failed to create audit log: {e}")
 
-
+#Send fee payment reminders to parents
 @shared_task
 def send_fee_reminder(student_ids, days_overdue=7):
-    """
-    Send fee payment reminders to parents
-    """
+  
     from core.models import Student, FeeAccount
     
     students = Student.objects.filter(
@@ -274,7 +249,7 @@ def send_fee_reminder(student_ids, days_overdue=7):
         try:
             fee_account = student.fee_account
             if fee_account.balance <= 0:
-                continue  # No outstanding balance
+                continue  
             
             # Send reminder to all parents
             for parent_relation in student.studentparentrelation_set.filter(is_fee_responsible=True):
@@ -298,12 +273,10 @@ def send_fee_reminder(student_ids, days_overdue=7):
     logger.info(f"Fee reminders sent: {sent_count} messages")
     return {'reminders_sent': sent_count}
 
-
+# Generate attendance report for a class
 @shared_task
 def generate_attendance_report(class_id, start_date, end_date):
-    """
-    Generate attendance report for a class (async)
-    """
+    
     try:
         from core.models import ClassRoom, AttendanceRecord
         from django.db.models import Count, Q
@@ -344,7 +317,6 @@ def generate_attendance_report(class_id, start_date, end_date):
                 'attendance_percentage': round(attendance_percentage, 2)
             })
         
-        # Store report data (you might want to save this to a file or database)
         logger.info(f"Attendance report generated for class {classroom.name}")
         return report_data
         
@@ -352,12 +324,10 @@ def generate_attendance_report(class_id, start_date, end_date):
         logger.error(f"Error generating attendance report: {e}")
         return None
 
-
+# Clean up old audit logs
 @shared_task
 def cleanup_old_audit_logs(days_to_keep=365):
-    """
-    Clean up old audit log entries
-    """
+   
     try:
         cutoff_date = timezone.now() - timezone.timedelta(days=days_to_keep)
         deleted_count = AuditLog.objects.filter(timestamp__lt=cutoff_date).delete()[0]
@@ -369,12 +339,10 @@ def cleanup_old_audit_logs(days_to_keep=365):
         logger.error(f"Error cleaning up audit logs: {e}")
         return 0
 
-
+# Notify parents of new grades posted
 @shared_task
 def send_grade_notification(grade_id):
-    """
-    Notify parents when new grades are posted
-    """
+  
     try:
         from core.models import GradeRecord
         
@@ -384,7 +352,6 @@ def send_grade_notification(grade_id):
         
         student = grade.student
         
-        # Notify all parents
         for parent_relation in student.studentparentrelation_set.all():
             parent = parent_relation.parent
             
@@ -408,20 +375,17 @@ def send_grade_notification(grade_id):
     except Exception as e:
         logger.error(f"Error sending grade notification: {e}")
 
-
+# Process M-Pesa payment callback
 @shared_task
 def process_mpesa_callback(callback_data):
-    """
-    Process M-Pesa payment callback
-    """
+   
     try:
-        # Extract relevant data from M-Pesa callback
+        
         transaction_id = callback_data.get('TransID')
         amount = float(callback_data.get('TransAmount', 0))
         phone_number = callback_data.get('MSISDN')
         mpesa_receipt = callback_data.get('BillRefNumber')
         
-        # Find the payment record
         payment = Payment.objects.filter(
             mpesa_receipt=mpesa_receipt,
             status='pending'
@@ -432,12 +396,10 @@ def process_mpesa_callback(callback_data):
             payment.transaction_reference = transaction_id
             payment.save()
             
-            # Update fee account
             fee_account = payment.student.fee_account
             fee_account.total_paid += payment.amount
             fee_account.update_balance()
             
-            # Send confirmation SMS
             send_payment_sms.delay(payment.id, phone_number)
             
             logger.info(f"M-Pesa payment processed: {transaction_id}")
@@ -448,12 +410,10 @@ def process_mpesa_callback(callback_data):
         logger.error(f"Error processing M-Pesa callback: {e}")
 
 
-# Periodic tasks (to be configured in Celery Beat)
+# Send daily fee reminders for overdue payments
 @shared_task
 def daily_fee_reminders():
-    """
-    Send daily fee reminders for overdue payments
-    """
+   
     from core.models import FeeAccount
     
     overdue_accounts = FeeAccount.objects.filter(
@@ -468,22 +428,3 @@ def daily_fee_reminders():
     
     return f"Fee reminders queued for {len(student_ids)} students"
 
-
-@shared_task 
-def weekly_attendance_alerts():
-    """
-    Send weekly attendance alerts for students with low attendance
-    """
-    from django.db.models import Count, Q
-    from datetime import timedelta
-    
-    # Get students with attendance < 80% in the last 7 days
-    week_ago = timezone.now().date() - timedelta(days=7)
-    
-    students_with_low_attendance = []
-    
-    # This would need more complex logic to calculate attendance percentages
-    # Implementation depends on your specific requirements
-    
-    logger.info("Weekly attendance alerts processed")
-    return "Attendance alerts completed"

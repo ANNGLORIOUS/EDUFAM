@@ -23,42 +23,31 @@ from core.tasks import send_payment_sms, send_message_notification
 
 User = get_user_model()
 
-
+# Parent profile with children list
 class ParentProfileView(generics.RetrieveUpdateAPIView):
-    """
-    Parent profile with children list
-    """
     serializer_class = ParentProfileSerializer
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
     def get_object(self):
-        """Get current parent's profile"""
         try:
             return self.request.user.parent_profile
         except Parent.DoesNotExist:
-            # Create parent profile if doesn't exist
+            
             return Parent.objects.create(user=self.request.user)
 
-
+# Student summary for parents
 class StudentSummaryView(generics.RetrieveAPIView):
-    """
-    Get complete student summary (grades, attendance, fees)
-    """
     serializer_class = StudentSummarySerializer
     permission_classes = [permissions.IsAuthenticated, IsParent, IsParentOfStudent]
     queryset = Student.objects.filter(is_active=True)
     
     def get_serializer_context(self):
-        """Add parent to context for unread message counting"""
         context = super().get_serializer_context()
         context['parent'] = self.request.user.parent_profile
         return context
 
-
+# Student grades with filtering
 class StudentGradesView(generics.ListAPIView):
-    """
-    Get detailed grades for a student with filtering options
-    """
     permission_classes = [permissions.IsAuthenticated, IsParent, IsParentOfStudent]
     
     def get_queryset(self):
@@ -69,17 +58,14 @@ class StudentGradesView(generics.ListAPIView):
             'subject', 'teacher', 'term'
         ).order_by('-assessment_date')
         
-        # Filter by term if provided
         term_id = self.request.query_params.get('term_id')
         if term_id:
             queryset = queryset.filter(term_id=term_id)
         
-        # Filter by subject if provided
         subject_id = self.request.query_params.get('subject_id')
         if subject_id:
             queryset = queryset.filter(subject_id=subject_id)
         
-        # Filter by assessment type if provided
         assessment_type = self.request.query_params.get('assessment_type')
         if assessment_type:
             queryset = queryset.filter(assessment_type=assessment_type)
@@ -90,11 +76,9 @@ class StudentGradesView(generics.ListAPIView):
         from core.serializers.parent_serializers import SubjectGradeSerializer
         return SubjectGradeSerializer
 
-
+# Student attendance with filtering
 class StudentAttendanceView(generics.ListAPIView):
-    """
-    Get attendance records for a student
-    """
+    
     permission_classes = [permissions.IsAuthenticated, IsParent, IsParentOfStudent]
     
     def get_queryset(self):
@@ -105,7 +89,6 @@ class StudentAttendanceView(generics.ListAPIView):
             'subject', 'recorded_by'
         ).order_by('-date')
         
-        # Filter by date range if provided
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
         
@@ -114,7 +97,6 @@ class StudentAttendanceView(generics.ListAPIView):
         if end_date:
             queryset = queryset.filter(date__lte=end_date)
         
-        # Filter by status if provided
         status_filter = self.request.query_params.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)
@@ -125,11 +107,9 @@ class StudentAttendanceView(generics.ListAPIView):
         from core.serializers.parent_serializers import AttendanceRecordSerializer
         return AttendanceRecordSerializer
 
-
+# Messaging Views
 class MessageThreadListView(generics.ListAPIView):
-    """
-    List all message threads for parent
-    """
+    
     serializer_class = MessageThreadSerializer
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
@@ -142,11 +122,9 @@ class MessageThreadListView(generics.ListAPIView):
             'participants', 'messages'
         ).order_by('-updated_at')
 
-
+# Message thread  view
 class MessageThreadDetailView(generics.RetrieveAPIView):
-    """
-    Get specific message thread with all messages
-    """
+   
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
     def get_object(self):
@@ -158,7 +136,6 @@ class MessageThreadDetailView(generics.RetrieveAPIView):
             is_active=True
         )
         
-        # Mark messages as read for current user
         thread.messages.filter(is_read=False).exclude(
             sender=self.request.user
         ).update(is_read=True, read_at=timezone.now())
@@ -168,10 +145,8 @@ class MessageThreadDetailView(generics.RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         thread = self.get_object()
         
-        # Get thread info
         thread_serializer = MessageThreadSerializer(thread, context={'request': request})
         
-        # Get all messages in thread
         messages = thread.messages.select_related('sender').order_by('created_at')
         messages_serializer = MessageSerializer(messages, many=True)
         
@@ -180,11 +155,9 @@ class MessageThreadDetailView(generics.RetrieveAPIView):
             'messages': messages_serializer.data
         })
 
-
+# Message creation view
 class MessageCreateView(APIView):
-    """
-    Create new message or reply to existing thread
-    """
+    
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
     def post(self, request):
@@ -202,36 +175,31 @@ class MessageCreateView(APIView):
             student = get_object_or_404(Student, id=data['student_id'])
         
         with transaction.atomic():
-            # Find or create message thread
+            
             thread_participants = [request.user, recipient]
             
-            # Try to find existing thread
             thread = MessageThread.objects.filter(
                 participants__in=thread_participants,
                 student=student
             ).distinct()
             
-            # Filter to threads that have exactly these participants
             for t in thread:
                 if set(t.participants.all()) == set(thread_participants):
                     thread = t
                     break
             else:
-                # Create new thread
                 thread = MessageThread.objects.create(
                     subject=data['subject'],
                     student=student
                 )
                 thread.participants.set(thread_participants)
             
-            # Create message
             message = Message.objects.create(
                 thread=thread,
                 sender=request.user,
                 content=data['content']
             )
             
-            # Update thread timestamp
             thread.updated_at = timezone.now()
             thread.save()
         
@@ -240,18 +208,15 @@ class MessageCreateView(APIView):
         # Send notification synchronously
         send_message_notification(message.id, recipient.id)
         
-        # Return created message
         message_serializer = MessageSerializer(message)
         return Response({
             'message': 'Message sent successfully',
             'data': message_serializer.data
         }, status=status.HTTP_201_CREATED)
 
-
+# Fee payment view
 class FeePaymentView(APIView):
-    """
-    Record fee payment
-    """
+    
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
     def post(self, request):
@@ -265,7 +230,6 @@ class FeePaymentView(APIView):
         student = get_object_or_404(Student, id=data['student_id'])
         
         with transaction.atomic():
-            # Create payment record
             payment = Payment.objects.create(
                 student=student,
                 amount=data['amount'],
@@ -277,7 +241,6 @@ class FeePaymentView(APIView):
                 status='completed'  
             )
             
-            # Update or create fee account
             fee_account, created = FeeAccount.objects.get_or_create(student=student)
             if created:
                 fee_account.total_fee_due = data['amount']  # Set initial fee if new account
@@ -290,7 +253,6 @@ class FeePaymentView(APIView):
         
          # call it synchronously
         send_payment_sms(payment.id, str(parent.user.phone_number))
-        # Return payment details
         from core.serializers.parent_serializers import PaymentSerializer
         payment_serializer = PaymentSerializer(payment)
         
@@ -300,11 +262,9 @@ class FeePaymentView(APIView):
             'new_balance': fee_account.balance
         }, status=status.HTTP_201_CREATED)
 
-
+# Student payment history view
 class StudentPaymentHistoryView(generics.ListAPIView):
-    """
-    Get payment history for a student
-    """
+    
     permission_classes = [permissions.IsAuthenticated, IsParent, IsParentOfStudent]
     
     def get_queryset(self):
@@ -319,11 +279,9 @@ class StudentPaymentHistoryView(generics.ListAPIView):
         from core.serializers.parent_serializers import PaymentSerializer
         return PaymentSerializer
 
-
+# Consent management views
 class ConsentListView(generics.ListAPIView):
-    """
-    List all consent records for parent's children
-    """
+    
     serializer_class = ConsentSerializer
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
@@ -334,11 +292,9 @@ class ConsentListView(generics.ListAPIView):
             student__in=parent.children.all()
         ).select_related('student').order_by('-updated_at')
 
-
+# Consent action view
 class ConsentActionView(APIView):
-    """
-    Grant or revoke consent
-    """
+    
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
     def post(self, request):
@@ -351,7 +307,6 @@ class ConsentActionView(APIView):
         parent = request.user.parent_profile
         student = get_object_or_404(Student, id=data['student_id'])
         
-        # Get or create consent record
         consent, created = Consent.objects.get_or_create(
             student=student,
             parent=parent,
@@ -359,7 +314,6 @@ class ConsentActionView(APIView):
             defaults={'notes': data.get('notes', '')}
         )
         
-        # Update consent based on action
         if data['action'] == 'grant':
             consent.grant_consent()
             message = f"Consent granted for {consent.get_consent_type_display()}"
@@ -367,7 +321,6 @@ class ConsentActionView(APIView):
             consent.revoke_consent()
             message = f"Consent revoked for {consent.get_consent_type_display()}"
         
-        # Update notes if provided
         if data.get('notes'):
             consent.notes = data['notes']
             consent.save()
@@ -379,11 +332,9 @@ class ConsentActionView(APIView):
             'consent': consent_serializer.data
         }, status=status.HTTP_200_OK)
 
-
+# Parent dashboard view
 class ParentDashboardView(APIView):
-    """
-    Parent dashboard with summary of all children
-    """
+    
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
     def get(self, request):
@@ -400,7 +351,6 @@ class ParentDashboardView(APIView):
         total_unread = 0
         
         for child in children:
-            # Get basic child info
             child_summary = {
                 'student': {
                     'id': child.id,
@@ -414,7 +364,6 @@ class ParentDashboardView(APIView):
                 'unread_messages': 0
             }
             
-            # Get most recent grade
             recent_grade = child.grades.select_related('subject').first()
             if recent_grade:
                 child_summary['recent_grade'] = {
@@ -423,7 +372,6 @@ class ParentDashboardView(APIView):
                     'date': recent_grade.assessment_date
                 }
             
-            # Get attendance percentage (last 30 days)
             thirty_days_ago = timezone.now().date() - timezone.timedelta(days=30)
             recent_attendance = child.attendance.filter(date__gte=thirty_days_ago)
             if recent_attendance.exists():
@@ -433,14 +381,12 @@ class ParentDashboardView(APIView):
                 ).count()
                 child_summary['attendance_percentage'] = round((present_days / total_days) * 100, 1)
             
-            # Get fee balance
             try:
                 fee_account = child.fee_account
                 child_summary['fee_balance'] = float(fee_account.balance)
             except FeeAccount.DoesNotExist:
                 pass
             
-            # Count unread messages
             unread_count = Message.objects.filter(
                 thread__student=child,
                 thread__participants=request.user,
@@ -454,7 +400,6 @@ class ParentDashboardView(APIView):
         
         dashboard_data['unread_messages'] = total_unread
         
-        # Get recent activities across all children
         recent_payments = Payment.objects.filter(
             student__in=children,
             paid_by=parent
@@ -466,7 +411,6 @@ class ParentDashboardView(APIView):
         
         activities = []
         
-        # Add payments to activities
         for payment in recent_payments:
             activities.append({
                 'type': 'payment',
@@ -476,7 +420,6 @@ class ParentDashboardView(APIView):
                 'amount': float(payment.amount)
             })
         
-        # Add grades to activities
         for grade in recent_grades:
             activities.append({
                 'type': 'grade',
@@ -486,7 +429,6 @@ class ParentDashboardView(APIView):
                 'percentage': grade.percentage
             })
         
-        # Sort activities by date
         activities.sort(key=lambda x: x['date'], reverse=True)
         dashboard_data['recent_activities'] = activities[:10]
         
@@ -495,21 +437,17 @@ class ParentDashboardView(APIView):
 
 # Utility view for getting available terms/subjects for filtering
 class FilterOptionsView(APIView):
-    """
-    Get available terms and subjects for filtering
-    """
+   
     permission_classes = [permissions.IsAuthenticated, IsParent]
     
     def get(self, request):
         parent = request.user.parent_profile
         children_ids = parent.children.values_list('id', flat=True)
         
-        # Get terms where children have grades
         terms = Term.objects.filter(
             grades__student_id__in=children_ids
         ).distinct().order_by('-start_date')
         
-        # Get subjects where children have grades
         subjects = Subject.objects.filter(
             grades__student_id__in=children_ids
         ).distinct().order_by('name')

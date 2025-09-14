@@ -10,9 +10,8 @@ from core.models import (
 )
 from auth_app.models import User
 
-
+# User Serializer
 class UserBasicSerializer(serializers.ModelSerializer):
-    """Basic user info for nested serialization"""
     full_name = serializers.SerializerMethodField()
     
     class Meta:
@@ -23,9 +22,8 @@ class UserBasicSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         return obj.get_full_name() or obj.username
 
-
+# Student Serializer
 class StudentBasicSerializer(serializers.ModelSerializer):
-    """Basic student info for listings"""
     full_name = serializers.SerializerMethodField()
     current_class_name = serializers.CharField(source='current_class.name', read_only=True)
     age = serializers.ReadOnlyField()
@@ -42,9 +40,8 @@ class StudentBasicSerializer(serializers.ModelSerializer):
     def get_full_name(self, obj):
         return obj.get_full_name()
 
-
+# Parent Serializer
 class ParentProfileSerializer(serializers.ModelSerializer):
-    """Parent profile with children list"""
     user = UserBasicSerializer(read_only=True)
     children = serializers.SerializerMethodField()
     children_count = serializers.SerializerMethodField()
@@ -65,7 +62,6 @@ class ParentProfileSerializer(serializers.ModelSerializer):
         
         for child in children:
             child_data = StudentBasicSerializer(child).data
-            # Add consent info for each child
             consents = child.consents.filter(parent=obj)
             child_data['consents'] = {
                 consent.consent_type: {
@@ -81,9 +77,8 @@ class ParentProfileSerializer(serializers.ModelSerializer):
     def get_children_count(self, obj):
         return obj.children.filter(is_active=True).count()
 
-
+# Subject Grade Serializer
 class SubjectGradeSerializer(serializers.ModelSerializer):
-    """Grades grouped by subject"""
     subject_name = serializers.CharField(source='subject.name', read_only=True)
     subject_code = serializers.CharField(source='subject.code', read_only=True)
     teacher_name = serializers.CharField(source='teacher.get_full_name', read_only=True)
@@ -99,9 +94,8 @@ class SubjectGradeSerializer(serializers.ModelSerializer):
             'teacher_name', 'comments'
         ]
 
-
+# Attendance Serializer
 class AttendanceRecordSerializer(serializers.ModelSerializer):
-    """Attendance record"""
     subject_name = serializers.CharField(source='subject.name', read_only=True)
     recorded_by_name = serializers.CharField(source='recorded_by.get_full_name', read_only=True)
     
@@ -112,9 +106,8 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
             'recorded_by_name', 'notes', 'recorded_at'
         ]
 
-
+# Payment Serializer
 class PaymentSerializer(serializers.ModelSerializer):
-    """Payment record"""
     paid_by_name = serializers.CharField(source='paid_by.full_name', read_only=True)
     
     class Meta:
@@ -125,9 +118,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'paid_by_name', 'payment_date', 'notes'
         ]
 
-
+# Fee Account Serializer
 class FeeAccountSerializer(serializers.ModelSerializer):
-    """Fee account with payment history"""
     recent_payments = serializers.SerializerMethodField()
     payment_history_count = serializers.SerializerMethodField()
     is_fee_paid = serializers.ReadOnlyField()
@@ -149,25 +141,20 @@ class FeeAccountSerializer(serializers.ModelSerializer):
     def get_payment_history_count(self, obj):
         return obj.student.payments.filter(status='completed').count()
 
-
+# Student Summary Serializer
 class StudentSummarySerializer(serializers.ModelSerializer):
-    """Complete student summary for parents"""
     full_name = serializers.SerializerMethodField()
     current_class_name = serializers.CharField(source='current_class.name', read_only=True)
     age = serializers.ReadOnlyField()
     
-    # Academic performance
     recent_grades = serializers.SerializerMethodField()
     grade_summary = serializers.SerializerMethodField()
     
-    # Attendance
     recent_attendance = serializers.SerializerMethodField()
     attendance_summary = serializers.SerializerMethodField()
     
-    # Fees
     fee_account = serializers.SerializerMethodField()
     
-    # Messages
     unread_messages_count = serializers.SerializerMethodField()
     
     class Meta:
@@ -183,14 +170,12 @@ class StudentSummarySerializer(serializers.ModelSerializer):
         return obj.get_full_name()
     
     def get_recent_grades(self, obj):
-        """Get last 10 grades"""
         recent_grades = obj.grades.select_related(
             'subject', 'teacher', 'term'
         ).order_by('-assessment_date')[:10]
         return SubjectGradeSerializer(recent_grades, many=True).data
     
     def get_grade_summary(self, obj):
-        """Get grade summary by subject for current term"""
         current_term = Term.objects.filter(is_current=True).first()
         if not current_term:
             return {}
@@ -223,7 +208,6 @@ class StudentSummarySerializer(serializers.ModelSerializer):
         return summary
     
     def get_recent_attendance(self, obj):
-        """Get last 30 days attendance"""
         thirty_days_ago = timezone.now().date() - timezone.timedelta(days=30)
         recent_attendance = obj.attendance.filter(
             date__gte=thirty_days_ago
@@ -231,7 +215,6 @@ class StudentSummarySerializer(serializers.ModelSerializer):
         return AttendanceRecordSerializer(recent_attendance, many=True).data
     
     def get_attendance_summary(self, obj):
-        """Get attendance summary for current term"""
         current_term = Term.objects.filter(is_current=True).first()
         if not current_term:
             return {}
@@ -266,14 +249,12 @@ class StudentSummarySerializer(serializers.ModelSerializer):
         for status_data in status_counts:
             summary[status_data['status']] = status_data['count']
         
-        # Calculate attendance percentage (present + late + excused = attended)
         attended = summary['present'] + summary['late'] + summary['excused']
         summary['attendance_percentage'] = round((attended / total_days) * 100, 2)
         
         return summary
     
     def get_fee_account(self, obj):
-        """Get fee account information"""
         try:
             fee_account = obj.fee_account
             return FeeAccountSerializer(fee_account).data
@@ -288,8 +269,6 @@ class StudentSummarySerializer(serializers.ModelSerializer):
             }
     
     def get_unread_messages_count(self, obj):
-        """Count unread messages for this student"""
-        # Get parent from context (will be set in view)
         parent = self.context.get('parent')
         if not parent:
             return 0
@@ -302,7 +281,6 @@ class StudentSummarySerializer(serializers.ModelSerializer):
 
 
 class MessageThreadSerializer(serializers.ModelSerializer):
-    """Message thread"""
     participants_info = serializers.SerializerMethodField()
     student_name = serializers.CharField(source='student.get_full_name', read_only=True)
     last_message = serializers.SerializerMethodField()
@@ -317,7 +295,6 @@ class MessageThreadSerializer(serializers.ModelSerializer):
         ]
     
     def get_participants_info(self, obj):
-        """Get info about all participants except current user"""
         current_user = self.context.get('request').user
         other_participants = obj.participants.exclude(id=current_user.id)
         return [
@@ -342,13 +319,11 @@ class MessageThreadSerializer(serializers.ModelSerializer):
         return None
     
     def get_unread_count(self, obj):
-        """Count unread messages for current user"""
         current_user = self.context.get('request').user
         return obj.messages.filter(is_read=False).exclude(sender=current_user).count()
 
-
+# Message Serializer
 class MessageSerializer(serializers.ModelSerializer):
-    """Individual message"""
     sender_name = serializers.CharField(source='sender.get_full_name', read_only=True)
     sender_type = serializers.CharField(source='sender.user_type', read_only=True)
     
@@ -360,16 +335,14 @@ class MessageSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'sender_name', 'sender_type', 'created_at']
 
-
+# Create Message Serializer
 class MessageCreateSerializer(serializers.Serializer):
-    """Create new message"""
     recipient_id = serializers.IntegerField()
     student_id = serializers.IntegerField(required=False, allow_null=True)
     subject = serializers.CharField(max_length=200)
     content = serializers.CharField(max_length=5000)
     
     def validate_recipient_id(self, value):
-        """Validate recipient exists and is teacher/admin"""
         try:
             recipient = User.objects.get(id=value)
             if recipient.user_type not in ['teacher', 'admin']:
@@ -379,16 +352,14 @@ class MessageCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("Recipient not found")
     
     def validate_student_id(self, value):
-        """Validate student belongs to parent if provided"""
         if value:
             parent = self.context['request'].user.parent_profile
             if not parent.children.filter(id=value).exists():
                 raise serializers.ValidationError("Student does not belong to you")
         return value
 
-
+# Fee Payment Serializer
 class FeePaymentSerializer(serializers.Serializer):
-    """Fee payment serializer"""
     student_id = serializers.IntegerField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0.01'))
     payment_method = serializers.ChoiceField(choices=Payment.PAYMENT_METHODS)
@@ -397,28 +368,24 @@ class FeePaymentSerializer(serializers.Serializer):
     notes = serializers.CharField(max_length=500, required=False, allow_blank=True)
     
     def validate_student_id(self, value):
-        """Validate student belongs to parent"""
         parent = self.context['request'].user.parent_profile
         if not parent.children.filter(id=value).exists():
             raise serializers.ValidationError("Student does not belong to you")
         return value
     
     def validate_amount(self, value):
-        """Validate amount is reasonable"""
         if value > Decimal('1000000.00'):  # 1 million limit
             raise serializers.ValidationError("Amount too large")
         return value
     
     def validate_mpesa_receipt(self, value):
-        """Validate M-Pesa receipt format if provided"""
         if value and self.initial_data.get('payment_method') == 'mpesa':
             if len(value) < 8:
                 raise serializers.ValidationError("Invalid M-Pesa receipt number")
         return value
 
-
+# Consent Serializer
 class ConsentSerializer(serializers.ModelSerializer):
-    """Consent management"""
     student_name = serializers.CharField(source='student.get_full_name', read_only=True)
     consent_type_display = serializers.CharField(source='get_consent_type_display', read_only=True)
     
@@ -431,16 +398,14 @@ class ConsentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'granted_at', 'revoked_at', 'created_at', 'updated_at']
 
-
+# Consent Action Serializer
 class ConsentActionSerializer(serializers.Serializer):
-    """Grant/Revoke consent"""
     student_id = serializers.IntegerField()
     consent_type = serializers.ChoiceField(choices=Consent.CONSENT_TYPES)
     action = serializers.ChoiceField(choices=[('grant', 'Grant'), ('revoke', 'Revoke')])
     notes = serializers.CharField(max_length=500, required=False, allow_blank=True)
     
     def validate_student_id(self, value):
-        """Validate student belongs to parent"""
         parent = self.context['request'].user.parent_profile
         if not parent.children.filter(id=value).exists():
             raise serializers.ValidationError("Student does not belong to you")

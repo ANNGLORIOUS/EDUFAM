@@ -36,34 +36,27 @@ class Command(BaseCommand):
         
         try:
             with transaction.atomic():
-                # Create data in order (due to foreign key dependencies)
                 school = self.create_school()
                 academic_year = self.create_academic_year(school)
                 terms = self.create_terms(academic_year)
                 subjects = self.create_subjects(school)
                 classes = self.create_classes(school, academic_year)
                 
-                # Create users and parents
                 teachers = self.create_teachers()
                 parent_users = self.create_parent_users()
                 parents = self.create_parents(parent_users)
                 
-                # Create students and relationships
                 students = self.create_students(school, classes, parents)
                 self.create_student_parent_relations(students, parents)
                 
-                # Create academic data
                 self.create_grades(students, subjects, terms, teachers)
                 self.create_attendance(students, subjects, teachers)
                 
-                # Create financial data
                 fee_structures = self.create_fee_structures(classes, terms)
                 self.create_fee_accounts_and_payments(students, parents, fee_structures)
                 
-                # Create communication data
                 self.create_messages(parents, teachers, students)
                 
-                # Create consent records
                 self.create_consent_records(students, parents)
                 
                 self.stdout.write(
@@ -78,7 +71,6 @@ class Command(BaseCommand):
             raise
 
     def clear_data(self):
-        """Clear existing data"""
         models_to_clear = [
             Message, MessageThread, Payment, FeeAccount, FeeStructure,
             AttendanceRecord, GradeRecord, StudentParentRelation, Consent,
@@ -88,11 +80,9 @@ class Command(BaseCommand):
         for model in models_to_clear:
             model.objects.all().delete()
         
-        # Clear users except superusers
         User.objects.filter(is_superuser=False).delete()
 
     def create_school(self):
-        """Create a test school"""
         school = School.objects.create(
             name="Greenfield International School",
             code="GIS001",
@@ -106,7 +96,6 @@ class Command(BaseCommand):
         return school
 
     def create_academic_year(self, school):
-        """Create current academic year"""
         academic_year = AcademicYear.objects.create(
             name="2024-2025",
             start_date=date(2024, 1, 8),
@@ -118,7 +107,6 @@ class Command(BaseCommand):
         return academic_year
 
     def create_terms(self, academic_year):
-        """Create three terms for the academic year"""
         terms = []
         term_dates = [
             (1, date(2024, 1, 8), date(2024, 4, 12)),
@@ -132,7 +120,7 @@ class Command(BaseCommand):
                 term_number=term_num,
                 start_date=start_date,
                 end_date=end_date,
-                is_current=(term_num == 2)  # Term 2 is current
+                is_current=(term_num == 2)  
             )
             terms.append(term)
         
@@ -140,7 +128,6 @@ class Command(BaseCommand):
         return terms
 
     def create_subjects(self, school):
-        """Create subjects"""
         subjects_data = [
             ("Mathematics", "MATH", True),
             ("English", "ENG", True),
@@ -169,9 +156,8 @@ class Command(BaseCommand):
         return subjects
 
     def create_classes(self, school, academic_year):
-        """Create class rooms"""
         classes = []
-        for grade in range(1, 9):  # Grades 1-8
+        for grade in range(1, 9):  
             for section in ['A', 'B']:
                 class_room = ClassRoom.objects.create(
                     name=f"Grade {grade}{section}",
@@ -187,7 +173,6 @@ class Command(BaseCommand):
         return classes
 
     def create_teachers(self):
-        """Create teacher users"""
         teachers = []
         teacher_data = [
             ("mary.smith", "Mary", "Smith", "mary.smith@school.com", "+254701234567"),
@@ -213,7 +198,6 @@ class Command(BaseCommand):
         return teachers
 
     def create_parent_users(self):
-        """Create parent users"""
         parents = []
         parent_data = [
             ("james.kamau", "James", "Kamau", "james.kamau@email.com", "+254712345678"),
@@ -244,7 +228,6 @@ class Command(BaseCommand):
         return parents
 
     def create_parents(self, parent_users):
-        """Create parent profiles"""
         parents = []
         addresses = [
             "Kileleshwa, Nairobi",
@@ -279,7 +262,6 @@ class Command(BaseCommand):
         return parents
 
     def create_students(self, school, classes, parents):
-        """Create students"""
         students = []
         kenyan_names = [
             ("Faith", "Wanjiru"), ("Brian", "Ochieng"), ("Mercy", "Achieng"),
@@ -316,14 +298,11 @@ class Command(BaseCommand):
         return students
 
     def create_student_parent_relations(self, students, parents):
-        """Create relationships between students and parents"""
         relationships = []
         
-        # Each parent gets 1-3 children
         parent_index = 0
         for student in students:
             if parent_index < len(parents):
-                # Primary parent
                 relation = StudentParentRelation.objects.create(
                     student=student,
                     parent=parents[parent_index],
@@ -333,7 +312,6 @@ class Command(BaseCommand):
                 )
                 relationships.append(relation)
                 
-                # Sometimes add a second parent
                 if random.choice([True, False]) and parent_index + 1 < len(parents):
                     second_relation = StudentParentRelation.objects.create(
                         student=student,
@@ -344,7 +322,6 @@ class Command(BaseCommand):
                     )
                     relationships.append(second_relation)
                 
-                # Move to next parent every 2-3 students
                 if random.choice([True, False, False]):
                     parent_index += 1
         
@@ -352,14 +329,12 @@ class Command(BaseCommand):
         return relationships
 
     def create_grades(self, students, subjects, terms, teachers):
-        """Create grade records"""
         grades = []
         assessment_types = ['assignment', 'quiz', 'midterm', 'final', 'project']
         
         for student in students:
-            for subject in subjects[:5]:  # Core subjects only
-                for term in terms[:2]:  # First 2 terms only
-                    # Create 3-5 grades per subject per term
+            for subject in subjects[:5]:  
+                for term in terms[:2]:  
                     for i in range(random.randint(3, 5)):
                         total_marks = random.choice([20, 30, 40, 50, 100])
                         obtained_marks = round(random.uniform(0.4, 0.95) * total_marks, 1)
@@ -389,19 +364,14 @@ class Command(BaseCommand):
         return grades
 
     def create_attendance(self, students, subjects, teachers):
-        """Create attendance records"""
         attendance_records = []
-        
-        # Create attendance for the last 60 days
         end_date = date.today()
         start_date = end_date - timedelta(days=60)
         
         current_date = start_date
         while current_date <= end_date:
-            # Skip weekends
-            if current_date.weekday() < 5:  # Monday = 0, Friday = 4
+            if current_date.weekday() < 5:  
                 for student in students:
-                    # 90% chance of being present
                     status = random.choices(
                         ['present', 'absent', 'late', 'excused'],
                         weights=[85, 5, 8, 2]
@@ -422,7 +392,6 @@ class Command(BaseCommand):
         return attendance_records
 
     def create_fee_structures(self, classes, terms):
-        """Create fee structures"""
         fee_structures = []
         
         fee_types = [
@@ -443,7 +412,6 @@ class Command(BaseCommand):
                     due_date=term.start_date + timedelta(days=30),
                     description=f"{fee_name} for {term}"
                 )
-                # Add all classes to this fee structure
                 fee_structure.class_rooms.set(classes)
                 fee_structures.append(fee_structure)
         
@@ -451,31 +419,25 @@ class Command(BaseCommand):
         return fee_structures
 
     def create_fee_accounts_and_payments(self, students, parents, fee_structures):
-        """Create fee accounts and payment records"""
         payments = []
         
         for student in students:
-            # Calculate total fees due for the student
             total_due = sum([fs.amount for fs in fee_structures if student.current_class in fs.class_rooms.all()])
             
-            # Create fee account
             fee_account = FeeAccount.objects.create(
                 student=student,
                 total_fee_due=total_due
             )
             
-            # Get student's fee-responsible parent
             fee_parent = student.parents.filter(
                 studentparentrelation__is_fee_responsible=True
             ).first()
             
             if fee_parent:
-                # Create 1-3 payments (partial payments)
                 num_payments = random.randint(1, 3)
                 total_paid = Decimal('0.00')
                 
                 for i in range(num_payments):
-                    # Random payment amount (but don't exceed remaining balance)
                     remaining = total_due - total_paid
                     if remaining > 0:
                         payment_amount = min(
@@ -499,7 +461,6 @@ class Command(BaseCommand):
                         payments.append(payment)
                         total_paid += payment_amount
                 
-                # Update fee account
                 fee_account.total_paid = total_paid
                 fee_account.update_balance()
         
@@ -507,11 +468,9 @@ class Command(BaseCommand):
         return payments
 
     def create_messages(self, parents, teachers, students):
-        """Create message threads and messages"""
         threads = []
         messages = []
         
-        # Create 10-15 message threads
         for i in range(random.randint(10, 15)):
             parent = random.choice(parents)
             teacher = random.choice(teachers)
@@ -535,7 +494,6 @@ class Command(BaseCommand):
             thread.participants.set([parent.user, teacher])
             threads.append(thread)
             
-            # Create 2-5 messages per thread
             for msg_num in range(random.randint(2, 5)):
                 sender = random.choice([parent.user, teacher])
                 
@@ -568,7 +526,6 @@ class Command(BaseCommand):
         return threads, messages
 
     def create_consent_records(self, students, parents):
-        """Create consent records"""
         consents = []
         consent_types = ['data_sharing', 'medical_info', 'photo_video', 'communication', 'emergency_contact']
         
@@ -578,7 +535,6 @@ class Command(BaseCommand):
             ).first()
             
             if primary_parent:
-                # Create 2-4 consent records per student
                 for consent_type in random.sample(consent_types, random.randint(2, 4)):
                     is_granted = random.choice([True, False])
                     
@@ -602,7 +558,6 @@ class Command(BaseCommand):
         return consents
 
     def print_summary(self):
-        """Print summary of created data"""
         self.stdout.write("\n" + "="*50)
         self.stdout.write(self.style.SUCCESS("DATA SEEDING SUMMARY"))
         self.stdout.write("="*50)
