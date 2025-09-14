@@ -186,8 +186,13 @@ DEFAULT_FROM_EMAIL = 'noreply@schoolsystem.com'
 # Mailtrap sending API (live) 
 # MAILTRAP_SENDING_API_TOKEN = "your_live_api_token_here"
 
+# Broker URL for Celery (using Redis)
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+
+# Simple JWT settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,

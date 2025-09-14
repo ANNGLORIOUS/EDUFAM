@@ -18,7 +18,6 @@ from .serializers import (
     OTPRequestSerializer, 
     OTPVerifySerializer,
     GoogleAuthSerializer,
-    UserProfileSerializer,
     PasswordChangeSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer
@@ -284,35 +283,6 @@ def google_login(request):
         'details': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
-
-# Get user profile
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_profile(request):
-    """Get user profile"""
-    serializer = UserProfileSerializer(request.user)
-    return Response({
-        'user': serializer.data
-    })
-
-
-# Update user profile
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-def update_profile(request):
-    """Update user profile"""
-    serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({
-            'message': 'Profile updated successfully',
-            'user': serializer.data
-        })
-    
-    return Response({
-        'error': 'Update failed',
-        'details': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Logout user

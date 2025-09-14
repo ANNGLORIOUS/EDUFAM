@@ -18,10 +18,6 @@ urlpatterns = [
     # Google OAuth
     path('google/', views.google_login, name='google_login'),
     
-    # Profile endpoints
-    path('profile/', views.get_profile, name='get_profile'),
-    path('profile/update/', views.update_profile, name='update_profile'),
-
      # Password Management endpoints 
     path('password/change/', views.change_password, name='change_password'),
     path('password/reset/', views.request_password_reset, name='request_password_reset'),

@@ -64,13 +64,7 @@ class OTPVerifySerializer(serializers.Serializer):
 class GoogleAuthSerializer(serializers.Serializer):
     token = serializers.CharField()
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 
-                 'phone_number', 'user_type', 'preferred_language', 
-                 'is_phone_verified', 'is_email_verified', 'created_at')
-        read_only_fields = ('id', 'username', 'created_at')
+
 
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
