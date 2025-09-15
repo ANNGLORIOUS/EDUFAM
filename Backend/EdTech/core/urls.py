@@ -9,6 +9,8 @@ from .views import (
     UserApprovalView,
     AttendanceReportView,
     USSDConfigView,
+    ussd_callback,
+
 )
 
 urlpatterns = [
@@ -27,4 +29,5 @@ urlpatterns = [
     path("admin/users/", UserApprovalView.as_view(), name="admin-users"),
     path("admin/reports/attendance/", AttendanceReportView.as_view(), name="attendance-report"),
     path("admin/ussd-config/", USSDConfigView.as_view(), name="ussd-config"),
+    path("ussd/", ussd_callback, name="ussd-callback"),
 ]
