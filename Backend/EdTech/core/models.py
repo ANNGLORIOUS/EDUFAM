@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
 # ----------------------
 # USER MODEL
@@ -150,8 +151,17 @@ class AuditLog(models.Model):
         return f"{self.action} by {self.user} at {self.timestamp}"
 
 
+def validate_menu_json(value):
+    """
+    Validate that menu_json has the expected schema.
+    """
+    if "welcome_text" not in value or "menus" not in value:
+        raise ValidationError("menu_json must contain 'welcome_text' and 'menus' keys")
+
+
 class USSDConfig(models.Model):
-    menu_json = models.JSONField(default=dict, blank=True)
+    name = models.CharField(max_length=100, default="default", unique=True)
+    menu_json = models.JSONField(default=dict, blank=True, validators=[validate_menu_json])
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -162,4 +172,4 @@ class USSDConfig(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"USSD config (updated: {self.updated_at})"
+        return f"USSD config: {self.name} (updated: {self.updated_at})"

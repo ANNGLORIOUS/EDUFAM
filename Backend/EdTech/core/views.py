@@ -82,19 +82,38 @@ def ussd_callback(request):
     phone_number = request.POST.get("phoneNumber")
     text = request.POST.get("text", "")
 
-    # Split user input
-    steps = text.split("*")
+    steps = text.split("*") if text else []
 
-    response = ""
-    if text == "":
-        response = "CON Welcome to EdTech\n1. Check Attendance\n2. Fees Balance\n3. Upcoming Events"
-    elif text == "1":
-        response = "END Attendance feature coming soon."
-    elif text == "2":
-        response = "END Your fee balance is Ksh 0 (demo)."
-    elif text == "3":
-        response = "END Next event: PTA Meeting on 20th Sept."
+    # get latest config
+    config = USSDConfig.objects.latest("updated_at")
+    menu = config.menu_json
+    menus = menu.get("menus", {})
+
+    response = "END Invalid option"
+
+    # root menu
+    if not steps:
+        options = "\n".join([f"{k}. {v['text']}" for k, v in menus.items()])
+        response = f"CON {menu['welcome_text']}\n{options}"
+
     else:
-        response = "END Invalid option."
+        # Traverse JSON tree
+        current = menus
+        node = None
+
+        for step in steps:
+            if step in current:
+                node = current[step]
+                current = node.get("children", {})
+            else:
+                response = "END Invalid choice"
+                break
+
+        if node:
+            if node.get("type") == "END":
+                response = f"END {node.get('message', 'Goodbye')}"
+            else:
+                options = "\n".join([f"{k}. {v['text']}" for k, v in node.get("children", {}).items()])
+                response = f"CON {node['text']}\n{options}"
 
     return HttpResponse(response, content_type="text/plain")

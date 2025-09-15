@@ -87,3 +87,35 @@ class AuditLogAdmin(admin.ModelAdmin):
 @admin.register(USSDConfig)
 class USSDConfigAdmin(admin.ModelAdmin):
     list_display = ("updated_at", "updated_by")
+
+{
+  "welcome_text": "Welcome to EdTech",
+  "menus": {
+    "1": {
+      "text": "Attendance",
+      "children": {
+        "1": {
+          "text": "Today’s Attendance",
+          "type": "END",
+          "message": "Attendance for today is 95%"
+        },
+        "2": {
+          "text": "Monthly Attendance",
+          "type": "END",
+          "message": "Monthly average is 92%"
+        }
+      }
+    },
+    "2": {
+      "text": "Exams",
+      "children": {
+        "1": {
+          "text": "Results",
+          "type": "END",
+          "message": "Exam results will be posted soon"
+        }
+      }
+    }
+  }
+}
+
