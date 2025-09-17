@@ -1,6 +1,12 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import 'bootstrap-icons/font/bootstrap-icons.css';
 
+:root {
+  --bs-primary: #1e0a3c;
+  --bs-secondary: #6c757d;
+  --bs-info: #0dcaf0; /* Accent Color */
+}
+
 /* @import "tailwindcss"; */
 
 
@@ -13,5 +19,5 @@ body {
 }
 
 .bg-edufam-dark {
-  background-color: #1e0a3c;
+  background-color: var(--bs-primary);
 }

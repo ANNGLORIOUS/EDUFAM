@@ -1,43 +1,39 @@
 import "./App.css";
-// import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
-import CustomNavbar from "./components/Navbar";
-import ParentDashboard from "./components/ParentDashboard";
-import TeacherDashboard from "./components/TeacherDashboard";
-import Footer from "./components/Footer";
-import { useUser } from "@clerk/clerk-react";
 import { Routes, Route } from 'react-router-dom';
+import { AuthProvider } from "./context/AuthContext";
+
+import MainLayout from "./layouts/MainLayout";
+import Dashboard from "./pages/Dashboard";
 import Welcome from "./components/Welcome";
-import AdminDashboard from "./components/AdminDashboard";
-import Sidebar from "./components/Sidebar";
-import { useState } from "react";
+
+// We can create dedicated pages for these later
+const PlaceholderPage = ({ title }: { title: string }) => <div className="container mt-4"><h2>{title}</h2></div>;
 
 function App() {
-  const { user } = useUser();
-  const teacherEmail = "sandranyambura72@gmail.com";
-  const isTeacher = user?.primaryEmailAddress?.emailAddress === teacherEmail;
-  const [sidebarVisible, setSidebarVisible] = useState(false);
-
-  const toggleSidebar = () => {
-    setSidebarVisible(!sidebarVisible);
-  };
-
   return (
-    <>
-      <CustomNavbar toggleSidebar={toggleSidebar} />
-      {sidebarVisible && <Sidebar />}
-      <div className="flex-grow-1">
-        <main>
-          <Routes>
-            <Route path="/" element={<AdminDashboard />} />
-            <Route path="/welcome" element={<><Welcome /><Footer /></>} />
-            <Route path="/parent-dashboard" element={<><ParentDashboard /><Footer /></>} />
-            <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-          </Routes>
-          
-          
-        </main>
-      </div>
-    </>
+    <AuthProvider>
+      <Routes>
+        {/* Routes that use the main layout */}
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/accounts" element={<PlaceholderPage title="Accounts" />} />
+          <Route path="/users" element={<PlaceholderPage title="Manage Users" />} />
+          <Route path="/reports" element={<PlaceholderPage title="School Reports" />} />
+          <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
+          <Route path="/my-students" element={<PlaceholderPage title="My Students" />} />
+          <Route path="/assignments" element={<PlaceholderPage title="Assignments" />} />
+          <Route path="/calendar" element={<PlaceholderPage title="Calendar" />} />
+          <Route path="/profile" element={<PlaceholderPage title="Profile" />} />
+          <Route path="/my-children" element={<PlaceholderPage title="My Children" />} />
+          <Route path="/fees" element={<PlaceholderPage title="Fees" />} />
+        </Route>
+
+        {/* Standalone routes without the main layout */}
+        <Route path="/welcome" element={<Welcome />} />
+
+      </Routes>
+    </AuthProvider>
   );
 }
 

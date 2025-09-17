@@ -5,10 +5,10 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-reac
 const CustomNavbar: React.FC<{ toggleSidebar: () => void }> = ({ toggleSidebar }) => {
   return (
     <Navbar className="bg-edufam-dark" variant="dark" fixed="top">
-      <Container>
-        {/* <Button variant="dark" onClick={toggleSidebar} className="me-2">
-          <i className="bi bi-list"></i>
-        </Button> */}
+      <Container fluid>
+        <Button onClick={toggleSidebar} className="bg-transparent border-0">
+          <i className="bi bi-list fs-4"></i>
+        </Button>
         <Navbar.Brand href="#home" >
           {/* Logo Text */}
           <span className="ml-2 text-xl font-bold">EDUFAM</span>

@@ -59,7 +59,12 @@
   flex: 1;
   min-height: 100vh;
   background-color: #f8f9fa;
-  /* transition: margin-left 0.3s ease; */
+  padding-top: 56px; /* Navbar height */
+  transition: margin-left 0.3s ease-in-out;
+}
+
+.main-content.shifted {
+  margin-left: 250px; /* Sidebar width */
 }
 
 /* Dashboard Header */
