@@ -15,11 +15,11 @@ const adminNavItems: NavItem[] = [
 ];
 
 const teacherNavItems: NavItem[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: 'bi bi-grid' },
-  { path: '/my-students', label: 'My Students', icon: 'bi bi-people' },
-  { path: '/assignments', label: 'Assignments', icon: 'bi bi-book' },
-  { path: '/calendar', label: 'Calendar', icon: 'bi bi-calendar' },
-  { path: '/profile', label: 'Profile', icon: 'bi bi-person' },
+  { path: '/dashboard', label: 'Dashboard', icon: 'bi bi-speedometer2' },
+  { path: '/results', label: 'Results', icon: 'bi bi-file-earmark-bar-graph' },
+  { path: '/events', label: 'Events', icon: 'bi bi-calendar-event' },
+  { path: '/attendance', label: 'Attendance', icon: 'bi bi-check2-square' },
+  { path: '/feedback', label: 'Feedback', icon: 'bi bi-chat-dots' },
 ];
 
 const parentNavItems: NavItem[] = [
@@ -44,7 +44,7 @@ const getNavItemsByRole = (role: UserRole): NavItem[] => {
 };
 
 const MainLayout = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { user } = useAuth();
 
   const toggleSidebar = () => {

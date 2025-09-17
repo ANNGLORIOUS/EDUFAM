@@ -6,6 +6,12 @@ import MainLayout from "./layouts/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import Welcome from "./components/Welcome";
 
+// Import the teacher view components
+import ResultsView from "./pages/ResultsView";
+import EventsView from "./pages/EventsView";
+import AttendanceView from "./pages/AttendanceView";
+import FeedbackView from "./pages/FeedbackView";
+
 // We can create dedicated pages for these later
 const PlaceholderPage = ({ title }: { title: string }) => <div className="container mt-4"><h2>{title}</h2></div>;
 
@@ -27,6 +33,12 @@ function App() {
           <Route path="/profile" element={<PlaceholderPage title="Profile" />} />
           <Route path="/my-children" element={<PlaceholderPage title="My Children" />} />
           <Route path="/fees" element={<PlaceholderPage title="Fees" />} />
+          
+          {/* Teacher-specific routes */}
+          <Route path="/results" element={<ResultsView />} />
+          <Route path="/events" element={<EventsView />} />
+          <Route path="/attendance" element={<AttendanceView />} />
+          <Route path="/feedback" element={<FeedbackView />} />
         </Route>
 
         {/* Standalone routes without the main layout */}
