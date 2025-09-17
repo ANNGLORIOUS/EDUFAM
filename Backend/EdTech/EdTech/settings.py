@@ -49,8 +49,6 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-    'phonenumber_field',
-    "auth_app",
 ]
 
 MIDDLEWARE = [
@@ -76,8 +74,8 @@ REST_FRAMEWORK = {
 
 
 ROOT_URLCONF = 'EdTech.urls'
-AUTH_USER_MODEL = 'auth_app.User'
-CORS_ALLOW_ALL_ORIGINS = True  # For development only
+AUTH_USER_MODEL = 'core.User'
+CORS_ALLOW_ALL_ORIGINS = True  
 
 # Google OAuth settings
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -107,15 +105,11 @@ WSGI_APPLICATION = 'EdTech.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
-        
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',  
     }
 }
+
 
 
 # Password validation

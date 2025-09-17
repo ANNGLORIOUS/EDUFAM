@@ -5,9 +5,9 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 import requests
 import logging
-from auth_app.models import User
+from .models import User
 
-from core.models import Payment, Message, Parent, AuditLog
+from .models import Payment, Message, Parent, AuditLog
 
 
 logger = logging.getLogger(__name__)
