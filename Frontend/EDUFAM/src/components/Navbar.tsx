@@ -2,15 +2,18 @@ import React from 'react';
 import { Navbar, Container, Nav, Button } from 'react-bootstrap';
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 
-const CustomNavbar: React.FC = () => {
+const CustomNavbar: React.FC<{ toggleSidebar: () => void }> = ({ toggleSidebar }) => {
   return (
-    <Navbar className="bg-edufam-dark" variant="dark" expand="lg" fixed="top">
+    <Navbar className="bg-edufam-dark" variant="dark" fixed="top">
       <Container>
+        {/* <Button variant="dark" onClick={toggleSidebar} className="me-2">
+          <i className="bi bi-list"></i>
+        </Button> */}
         <Navbar.Brand href="#home" >
           {/* Logo Text */}
           <span className="ml-2 text-xl font-bold">EDUFAM</span>
         </Navbar.Brand>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
+        {/* Removed Navbar.Toggle (hamburger) */}
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
           </Nav>

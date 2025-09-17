@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Sidebar from './Sidebar';
 import CustomNavbar from './Navbar';
 import Footer from './Footer';
 import { Container, Row, Col, Card, ListGroup, Button, Form } from 'react-bootstrap';
@@ -92,18 +93,7 @@ const AdminDashboard: React.FC = () => {
       <Container fluid className="py-4">
         <Row>
           <Col md={3}>
-            <Card className="mb-4">
-              <Card.Header>
-                <h5 className="mb-0" style={{ color: '#1e0a3c', fontWeight: 700 }}>Admin Sidebar</h5>
-              </Card.Header>
-              <ListGroup variant="flush">
-                <ListGroup.Item action active={activePage === 'home'} onClick={() => setActivePage('home')}>Dashboard Home</ListGroup.Item>
-                <ListGroup.Item action active={activePage === 'accounts'} onClick={() => setActivePage('accounts')}>Accounts</ListGroup.Item>
-                <ListGroup.Item action active={activePage === 'users'} onClick={() => setActivePage('users')}>Manage Users</ListGroup.Item>
-                <ListGroup.Item action active={activePage === 'reports'} onClick={() => setActivePage('reports')}>School Reports</ListGroup.Item>
-                <ListGroup.Item action active={activePage === 'ussd'} onClick={() => setActivePage('ussd')}>USSD Services</ListGroup.Item>
-              </ListGroup>
-            </Card>
+            <Sidebar activePage={activePage} setActivePage={setActivePage} />
           </Col>
           <Col md={9}>
             {activePage === 'home' && (
