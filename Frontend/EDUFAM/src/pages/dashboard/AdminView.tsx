@@ -29,7 +29,7 @@ const AdminView: React.FC = () => {
 
   return (
     <>
-      <Card className="mb-4" style={{ background: 'linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%)', border: 'none', boxShadow: '0 4px 24px rgba(108,99,255,0.10)' }}>
+      <Card className="mb-4" style={{ backgroundColor: 'white', border: '1px solid #dee2e6' }}>
         <Card.Body>
           <h2 style={{ color: '#1e0a3c', fontWeight: 700 }}>Welcome, {adminData.name}!</h2>
           <p style={{ color: '#6c63ff', fontSize: '1.1em' }}>Manage {adminData.schoolName} efficiently with EDUFAM.</p>

@@ -63,8 +63,8 @@ const MainLayout = () => {
     <>
       <CustomNavbar toggleSidebar={toggleSidebar} />
       <Sidebar navItems={navItems} isOpen={isSidebarOpen} />
-      <div className={`main-content flex-grow-1 ${isSidebarOpen ? 'shifted' : ''}`}>
-        <main>
+      <div className={`main-content flex-grow-1 ${isSidebarOpen ? 'shifted' : ''}`} style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+        <main style={{ padding: '0', backgroundColor: '#f8f9fa' }}>
           <Outlet /> {/* Page content will be rendered here */}
         </main>
       </div>
