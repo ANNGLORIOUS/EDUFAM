@@ -1,4 +1,42 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Admin Dashboard Section Styling */
+.admin-dashboard-section {
+  background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(108,99,255,0.10);
+  padding: 2rem 1.5rem;
+
+}
+
+.admin-dashboard-section > .card-body {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+  margin-top: 70px!important;
+}
+
+.admin-dashboard-section h2, .admin-dashboard-section h5 {
+  color: #1e0a3c;
+  font-weight: 700;
+}
+
+.admin-dashboard-section .stat-label {
+  color: #6c63ff;
+  font-size: 1em;
+}
+
+.admin-dashboard-section .stat-value {
+  font-size: 1.5em;
+  font-weight: 700;
+}
+
+.admin-dashboard-section .trend-up {
+  color: green;
+  font-size: 1.5em;
+}
+.admin-dashboard-section .trend-down {
+  color: red;
+  font-size: 1.5em;
+}
 /* Main Layout Styling */
 /* App Layout */
 #root {
@@ -54,8 +92,8 @@
 }
 
 main {
-  max-width: 1200px;
-  margin: 0 auto;
+  /* max-width: 1200px; */
+  /* margin: 0 auto; */
   padding: 0 2rem 2rem;
 }
 
