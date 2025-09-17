@@ -37,21 +37,28 @@ interface Grade {
   grade: string;
 }
 
-
+// Helper to get logged-in parent and their child
+function getLoggedInParent() {
+  // Simulate logged-in parent by email (replace with real auth in production)
+  const parentEmail = localStorage.getItem('edufam_logged_in_parent_email');
+  if (!parentEmail) return null;
+  const users = JSON.parse(localStorage.getItem('edufam_users') || '[]');
+  return users.find((u: any) => u.type === 'parent' && u.email === parentEmail);
+}
+function getChildForParent(parent: any) {
+  if (!parent || !parent.childId) return null;
+  const users = JSON.parse(localStorage.getItem('edufam_users') || '[]');
+  return users.find((u: any) => u.type === 'student' && u.id === parent.childId);
+}
 
 const ParentDashboard: React.FC = () => {
-  const childData = {
-    name: "Collins Mwasi",
-    class: "Grade 5-A",
-    photo: "https://randomuser.me/api/portraits/men/32.jpg", // working online image
-    recentGrades: [
-      { subject: "Mathematics", grade: "A" },
-      { subject: "English", grade: "B+" },
-      { subject: "Science", grade: "A-" },
-      { subject: "Kiswahili", grade: "A-" },
-      { subject: "Art", grade: "A-" }
-    ] as Grade[],
-    attendance: 90
+  const parent = getLoggedInParent();
+  const childData = getChildForParent(parent) || {
+    name: "No child linked",
+    class: "",
+    photo: "https://randomuser.me/api/portraits/lego/1.jpg",
+    recentGrades: [],
+    attendance: 0
   };
 
   // Example notifications
@@ -173,10 +180,10 @@ const ParentDashboard: React.FC = () => {
                         <h4>{childData.name}</h4>
                         <p className="text-muted">{childData.class}</p>
                         <div className="d-flex flex-column gap-2 mt-3">
-                          <Button className="modern-action-btn" style={{ width: '100%' }}>
+                          <Button className="modern-action-btn" style={{ width: '100%' }} as="a" href="https://wa.me/254700000000" target="_blank" rel="noopener noreferrer">
                             <i className="bi bi-chat-dots me-2"></i> Chat with Teacher
                           </Button>
-                          <Button className="modern-action-btn" style={{ width: '100%' }}>
+                          <Button className="modern-action-btn" style={{ width: '100%' }} as="a" href="https://wa.me/254711111111" target="_blank" rel="noopener noreferrer">
                             <i className="bi bi-people me-2"></i> Group Chat
                           </Button>
                         </div>
@@ -344,9 +351,8 @@ const ParentDashboard: React.FC = () => {
       {/* Feedback section */}
       <Row>
         <Col md={12}>
-          <div ref={sectionRefs.feedback}>
-            <Card className="mb-4 feedback-card-gradient" style={{ background: 'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)', border: 'none', boxShadow: '0 4px 24px rgba(171,71,188,0.10)' }}>
-              {/* Feedback / Request Meeting */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <Card className="mb-4 feedback-card-gradient" style={{ maxWidth: 420, width: '100%', background: 'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)', border: 'none', boxShadow: '0 4px 24px rgba(171,71,188,0.10)' }}>
               <Card.Header style={{ background: 'transparent', border: 'none', paddingBottom: 0 }}>
                 <h5 className="mb-0" style={{ color: '#1e0a3c', fontWeight: 700, letterSpacing: 0.5 }}>Feedback / Request Meeting</h5>
               </Card.Header>
