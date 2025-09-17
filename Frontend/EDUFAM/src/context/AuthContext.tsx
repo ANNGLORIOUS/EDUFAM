@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       return null;
     }
 
-    let role: UserRole = 'TEACHER'; // Default role for any signed-in user
+    let role: UserRole = 'ADMIN'; // Default role for any signed-in user
     const userEmail = clerkUser.primaryEmailAddress?.emailAddress;
 
     if (userEmail === teacherEmail) {

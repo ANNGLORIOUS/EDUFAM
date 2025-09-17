@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import CustomNavbar from './Navbar';
 import { useUser } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
+import Footer from './Footer';
 
 const Welcome: React.FC = () => {
 	const { isSignedIn } = useUser();
@@ -185,6 +186,7 @@ const Welcome: React.FC = () => {
 							<a href="/sign-in" style={{ color: '#fb7100', fontWeight: 600, textDecoration: 'underline' }}>Sign in</a> or <a href="/sign-up" style={{ color: '#fb7100', fontWeight: 600, textDecoration: 'underline' }}>Create an account</a> today!
 						</p>
 					</section>
+					<Footer />
 		</>
 	);
 };
