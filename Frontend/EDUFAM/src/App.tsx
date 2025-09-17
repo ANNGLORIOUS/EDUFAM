@@ -12,6 +12,12 @@ import EventsView from "./pages/EventsView";
 import AttendanceView from "./pages/AttendanceView";
 import FeedbackView from "./pages/FeedbackView";
 
+// Import the admin view components
+import UsersView from "./pages/UsersView";
+import ReportsView from "./pages/ReportsView";
+import AccountsView from "./pages/AccountsView";
+import SettingsView from "./pages/SettingsView";
+
 // We can create dedicated pages for these later
 const PlaceholderPage = ({ title }: { title: string }) => <div className="container mt-4"><h2>{title}</h2></div>;
 
@@ -23,10 +29,6 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/accounts" element={<PlaceholderPage title="Accounts" />} />
-          <Route path="/users" element={<PlaceholderPage title="Manage Users" />} />
-          <Route path="/reports" element={<PlaceholderPage title="School Reports" />} />
-          <Route path="/settings" element={<PlaceholderPage title="Settings" />} />
           <Route path="/my-students" element={<PlaceholderPage title="My Students" />} />
           <Route path="/assignments" element={<PlaceholderPage title="Assignments" />} />
           <Route path="/calendar" element={<PlaceholderPage title="Calendar" />} />
@@ -39,6 +41,12 @@ function App() {
           <Route path="/events" element={<EventsView />} />
           <Route path="/attendance" element={<AttendanceView />} />
           <Route path="/feedback" element={<FeedbackView />} />
+
+          {/* Admin-specific routes */}
+          <Route path="/accounts" element={<AccountsView />} />
+          <Route path="/users" element={<UsersView />} />
+          <Route path="/reports" element={<ReportsView />} />
+          <Route path="/settings" element={<SettingsView />} />
         </Route>
 
         {/* Standalone routes without the main layout */}
