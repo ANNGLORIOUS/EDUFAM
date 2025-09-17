@@ -110,6 +110,29 @@ const ParentDashboard: React.FC = () => {
     }
   };
 
+  // Feedback submission handler
+  const handleFeedbackSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const concernType = (form.elements.namedItem('concernType') as HTMLSelectElement)?.value;
+    const message = (form.elements.namedItem('message') as HTMLTextAreaElement)?.value;
+    const requestCallback = (form.elements.namedItem('requestCallback') as HTMLInputElement)?.checked;
+    if (!concernType || !message) return;
+    // Save feedback to localStorage
+    const feedbacks = JSON.parse(localStorage.getItem('edufam_feedbacks') || '[]');
+    feedbacks.push({
+      concernType,
+      message,
+      requestCallback,
+      date: new Date().toISOString(),
+      from: childData.name,
+      class: childData.class
+    });
+    localStorage.setItem('edufam_feedbacks', JSON.stringify(feedbacks));
+    alert('Feedback sent to teacher!');
+    form.reset();
+  };
+
   return (
     <Container fluid className="py-4">
       <Row className="parent-dashboard-row g-0">
@@ -322,16 +345,16 @@ const ParentDashboard: React.FC = () => {
       <Row>
         <Col md={12}>
           <div ref={sectionRefs.feedback}>
-            <Card className="mb-4 feedback-card-gradient" style={{ marginLeft: '150px', background: 'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)', border: 'none', boxShadow: '0 4px 24px rgba(171,71,188,0.10)' }}>
+            <Card className="mb-4 feedback-card-gradient" style={{ background: 'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)', border: 'none', boxShadow: '0 4px 24px rgba(171,71,188,0.10)' }}>
               {/* Feedback / Request Meeting */}
               <Card.Header style={{ background: 'transparent', border: 'none', paddingBottom: 0 }}>
                 <h5 className="mb-0" style={{ color: '#1e0a3c', fontWeight: 700, letterSpacing: 0.5 }}>Feedback / Request Meeting</h5>
               </Card.Header>
               <Card.Body>
-                <Form onSubmit={(e) => { e.preventDefault(); }}>
+                <Form onSubmit={handleFeedbackSubmit}>
                   <Form.Group className="mb-3">
                     <Form.Label style={{ color: '#a83279', fontWeight: 600 }}>Concern Type</Form.Label>
-                    <Form.Select style={{ background: '#fff', border: '1.5px solid #a83279', borderRadius: 10, color: '#6c63ff', fontWeight: 500 }}>
+                    <Form.Select name="concernType" style={{ background: '#fff', border: '1.5px solid #a83279', borderRadius: 10, color: '#6c63ff', fontWeight: 500 }}>
                       <option value="">Select concern type...</option>
                       <option value="academic">Academic</option>
                       <option value="behavior">Behavior</option>
@@ -340,10 +363,10 @@ const ParentDashboard: React.FC = () => {
                   </Form.Group>
                   <Form.Group className="mb-3">
                     <Form.Label style={{ color: '#a83279', fontWeight: 600 }}>Message</Form.Label>
-                    <Form.Control as="textarea" rows={3} style={{ background: '#fff', border: '1.5px solid #a83279', borderRadius: 10, color: '#6c63ff', fontWeight: 500 }} />
+                    <Form.Control as="textarea" name="message" rows={3} style={{ background: '#fff', border: '1.5px solid #a83279', borderRadius: 10, color: '#6c63ff', fontWeight: 500 }} />
                   </Form.Group>
                   <Form.Group className="mb-3">
-                    <Form.Check type="checkbox" label="Request Callback" style={{ color: '#a83279', fontWeight: 500 }} />
+                    <Form.Check type="checkbox" name="requestCallback" label="Request Callback" style={{ color: '#a83279', fontWeight: 500 }} />
                   </Form.Group>
                   <Button variant="primary" type="submit" style={{
                     background: 'linear-gradient(90deg, #a83279 0%, #6c63ff 100%)',

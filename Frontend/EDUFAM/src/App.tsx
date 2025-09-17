@@ -7,6 +7,7 @@ import Footer from "./components/Footer";
 import { useUser } from "@clerk/clerk-react";
 import { Routes, Route } from 'react-router-dom';
 import Welcome from "./components/Welcome";
+import AdminDashboard from "./components/AdminDashboard";
 
 function App() {
   const { user } = useUser();
@@ -18,9 +19,13 @@ function App() {
       <div className="flex-grow-1">
         <main>
           <Routes>
+            <Route path="/" element={<AdminDashboard />} />
             <Route path="/welcome" element={<><Welcome /><Footer /></>} />
-            <Route path="/" element={isTeacher ? <TeacherDashboard /> : <><ParentDashboard /><Footer /></>} />
+            <Route path="/parent-dashboard" element={<><ParentDashboard /><Footer /></>} />
+            <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
           </Routes>
+          
+          
         </main>
       </div>
     </>
