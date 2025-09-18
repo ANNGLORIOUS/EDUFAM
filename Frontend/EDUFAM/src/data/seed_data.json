@@ -1,0 +1,137 @@
+{
+  "results": [
+    {
+      "studentId": "12A",
+      "studentName": "Jane Doe",
+      "studentClass": "Class 1 ",
+      "term": "Term 1",
+      "grade": "A",
+  "fileName": "JaneDoe_Term1_Results.pdf",
+  "fileDataUrl": "data:application/pdf;base64,JVBERi0xLjQKJcfs...fakebase64...",
+  "parentEmail": "janedoeparent@gmail.com"
+    },
+    {
+      "studentId": "7B",
+      "studentName": "John Smith",
+      "studentClass": "Class 2 ",
+      "term": "Term 2",
+      "grade": "B+",
+  "fileName": "JohnSmith_Term2_Results.pdf",
+  "fileDataUrl": "data:application/pdf;base64,JVBERi0xLjQKJcfs...fakebase64...",
+  "parentEmail": "johnsmith.parent@email.com"
+    },
+    {
+      "studentId": "5C",
+      "studentName": "Mary Johnson",
+      "studentClass": "Class 3 ",
+      "term": "Term 3",
+      "grade": "A-",
+  "fileName": "MaryJohnson_Term3_Results.pdf",
+  "fileDataUrl": "data:application/pdf;base64,JVBERi0xLjQKJcfs...fakebase64...",
+  "parentEmail": "maryjohnson.parent@email.com"
+    }
+  ],
+  "feedback": [
+    {
+      "parentEmail": "janedoeparent@gmail.com",
+      "concern": "Homework",
+      "message": "My child is struggling with the math homework. Can you provide extra help?"
+    },
+    {
+      "parentEmail": "johnsmith.parent@email.com",
+      "concern": "Attendance",
+      "message": "John will be absent next week due to family reasons."
+    },
+    {
+      "parentEmail": "maryjohnson.parent@email.com",
+      "concern": "Results",
+      "message": "Can I get more details about the last test results?"
+    }
+  ],
+  "attendance": [
+    {
+      "studentId": "12A",
+      "studentName": "Jane Doe",
+      "studentClass": "Class 1 ",
+      "term": "Term 1",
+      "weeks": [true, true, true, true, true, true, true, false, false],
+  "attendancePercent": 78,
+  "parentEmail": "janedoe.parent@email.com"
+    },
+    {
+      "studentId": "7B",
+      "studentName": "John Smith",
+      "studentClass": "Class 2 ",
+      "term": "Term 2",
+      "weeks": [true, true, true, true, true, true, true, true, true],
+  "attendancePercent": 100,
+  "parentEmail": "johnsmith.parent@email.com"
+    },
+    {
+      "studentId": "5C",
+      "studentName": "Mary Johnson",
+      "studentClass": "Class 3 ",
+      "term": "Term 3",
+      "weeks": [true, false, true, false, true, false, true, false, true],
+  "attendancePercent": 56,
+  "parentEmail": "maryjohnson.parent@email.com"
+    },
+    {
+      "studentId": "8D",
+      "studentName": "Samuel Lee",
+      "studentClass": "Class 1 ",
+      "term": "Term 2",
+      "weeks": [true, true, false, false, true, true, false, false, false],
+  "attendancePercent": 44,
+  "parentEmail": "samuellee.parent@email.com"
+    },
+    {
+      "studentId": "9E",
+      "studentName": "Emily Clark",
+      "studentClass": "Class 2 ",
+      "term": "Term 3",
+      "weeks": [true, true, true, true, false, false, false, false, false],
+  "attendancePercent": 44,
+  "parentEmail": "emilyclark.parent@email.com"
+    },
+    {
+      "studentId": "10F",
+      "studentName": "Michael Brown",
+      "studentClass": "Class 3 ",
+      "term": "Term 1",
+      "weeks": [true, true, true, true, true, true, true, true, false],
+  "attendancePercent": 89,
+  "parentEmail": "michaelbrown.parent@email.com"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "title": "Maths Contest",
+      "start": "2025-09-22T10:00:00",
+      "end": "2025-09-22T12:00:00",
+      "description": "Annual maths contest for all grades."
+    },
+    {
+      "id": 2,
+      "title": "Parents Meeting",
+      "start": "2025-09-25T14:00:00",
+      "end": "2025-09-25T16:00:00",
+      "description": "Meet with teachers to discuss your child’s progress."
+    },
+    {
+      "id": 3,
+      "title": "School Holiday",
+      "start": "2025-09-28T00:00:00",
+      "end": "2025-09-28T23:59:00",
+      "description": "School will be closed for a public holiday."
+    },
+    {
+      "id": 4,
+      "title": "Science Fair",
+      "start": "2025-10-02T09:00:00",
+      "end": "2025-10-02T15:00:00",
+      "description": "Annual science fair for all students."
+    }
+  ]
+}
