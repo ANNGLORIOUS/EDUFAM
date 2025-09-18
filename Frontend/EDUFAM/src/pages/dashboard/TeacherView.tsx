@@ -17,10 +17,10 @@ const TeacherView: React.FC = () => {
 
 	return (
 		<>
-			<Card className="mb-4" style={{ background: 'linear-gradient(135deg, #e0f2e7 0%, #f8fafc 100%)', border: 'none', boxShadow: '0 4px 24px rgba(52,168,83,0.10)' }}>
+			<Card className="mb-4" style={{ background: '#ffffff', border: '1px solid #e9ecef', boxShadow: '0 4px 24px rgba(0, 0, 0, 0.05)' }}>
 				<Card.Body>
 					<h2 style={{ color: '#1e0a3c', fontWeight: 700 }}>Welcome, {teacherData.name}!</h2>
-					<p style={{ color: '#34a853', fontSize: '1.1em' }}>Manage your classes and students efficiently.</p>
+					<p style={{ color: '#6c757d', fontSize: '1.1em' }}>Manage your classes and students efficiently.</p>
 					
 					{/* Summary Cards */}
 					<Row className="mb-4">
@@ -29,7 +29,7 @@ const TeacherView: React.FC = () => {
 								<Card.Body>
 									<h5>My Classes</h5>
 									<h3>{teacherData.classes.length}</h3>
-									<div style={{ fontSize: '0.95em', color: '#34a853' }}>
+									<div style={{ fontSize: '0.95em', color: '#6c63ff' }}>
 										Subject: {teacherData.subject}
 									</div>
 								</Card.Body>
@@ -40,7 +40,7 @@ const TeacherView: React.FC = () => {
 								<Card.Body>
 									<h5>Total Students</h5>
 									<h3>{teacherData.totalStudents}</h3>
-									<div style={{ fontSize: '0.95em', color: '#34a853' }}>
+									<div style={{ fontSize: '0.95em', color: '#6c63ff' }}>
 										Across all classes
 									</div>
 								</Card.Body>
@@ -51,7 +51,7 @@ const TeacherView: React.FC = () => {
 								<Card.Body>
 									<h5>Avg Attendance</h5>
 									<h3>{teacherData.averageAttendance}%</h3>
-									<div style={{ fontSize: '0.95em', color: '#34a853' }}>
+									<div style={{ fontSize: '0.95em', color: '#6c63ff' }}>
 										This month
 									</div>
 								</Card.Body>
@@ -62,7 +62,7 @@ const TeacherView: React.FC = () => {
 								<Card.Body>
 									<h5>Pending Tasks</h5>
 									<h3>{teacherData.pendingAssignments}</h3>
-									<div style={{ fontSize: '0.95em', color: '#34a853' }}>
+									<div style={{ fontSize: '0.95em', color: '#6c63ff' }}>
 										Assignments to grade
 									</div>
 								</Card.Body>
@@ -77,7 +77,7 @@ const TeacherView: React.FC = () => {
 								<Card.Header><h5 className="mb-0" style={{ color: '#1e0a3c' }}>Quick Actions</h5></Card.Header>
 								<div className="d-flex flex-wrap gap-2 p-3">
 									<Button variant="primary" size="sm">Take Attendance</Button>
-									<Button variant="success" size="sm">Grade Assignments</Button>
+									<Button style={{ backgroundColor: '#6c63ff', borderColor: '#6c63ff' }} size="sm">Grade Assignments</Button>
 									<Button variant="info" size="sm">Create Test</Button>
 									<Button variant="warning" size="sm">Send Notice</Button>
 									<Button variant="secondary" size="sm">View Reports</Button>
@@ -189,7 +189,7 @@ const TeacherView: React.FC = () => {
 															<tr>
 																<td>12A</td>
 																<td>Jane Doe</td>
-																<td><span className="badge bg-success">A</span></td>
+																<td><span className="badge" style={{ backgroundColor: '#6c63ff', color: 'white' }}>A</span></td>
 															</tr>
 															<tr>
 																<td>12B</td>
@@ -199,7 +199,7 @@ const TeacherView: React.FC = () => {
 															<tr>
 																<td>12C</td>
 																<td>Emma Wilson</td>
-																<td><span className="badge bg-success">A-</span></td>
+																<td><span className="badge" style={{ backgroundColor: '#667eea', color: 'white' }}>A-</span></td>
 															</tr>
 														</tbody>
 													</table>
@@ -220,7 +220,7 @@ const TeacherView: React.FC = () => {
 															<tr>
 																<td>12A</td>
 																<td>Jane Doe</td>
-																<td><span className="badge bg-success">98%</span></td>
+																<td><span className="badge" style={{ backgroundColor: '#6c63ff', color: 'white' }}>98%</span></td>
 															</tr>
 															<tr>
 																<td>12B</td>
@@ -230,7 +230,7 @@ const TeacherView: React.FC = () => {
 															<tr>
 																<td>12C</td>
 																<td>Emma Wilson</td>
-																<td><span className="badge bg-success">95%</span></td>
+																<td><span className="badge" style={{ backgroundColor: '#667eea', color: 'white' }}>95%</span></td>
 															</tr>
 														</tbody>
 													</table>
