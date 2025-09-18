@@ -1,0 +1,32 @@
+.sidebar {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  padding-top: 4rem; /* Extra space for hamburger button */
+  margin-top: 56px; /* Height of the navbar */
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 250px;
+  z-index: 1020; /* Below navbar (1030) */
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.sidebar li {
+  margin-bottom: 0.5rem;
+}
+
+.sidebar a {
+  text-decoration: none;
+  color: #333;
+}

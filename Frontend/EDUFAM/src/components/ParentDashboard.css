@@ -1,5 +1,5 @@
 /* Force green background for parent dashboard sidebar, override global sidebar */
-.parent-dashboard-row .sidebar {
+.parent-sidebar {
   background: #43cea2 !important;
 }
 /* ParentDashboard.css */
@@ -220,6 +220,19 @@ p {
 }
 
 /* Responsive Styles */
+@media (max-width: 768px) {
+  .attendance-circle {
+    width: 100px;
+    height: 100px;
+    border-width: 6px;
+  }
+  
+  .messages-container,
+  .chat-container {
+    height: 250px !important;
+  }
+}
+
 @media (max-width: 768px) {
   .attendance-circle {
     width: 100px;

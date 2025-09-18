@@ -19,17 +19,15 @@ from google.auth.transport import requests as google_requests
 
 import logging
 
-from .models import (
-    Parent, Student, FeeAccount, Payment, MessageThread, Message, Consent,
-    User, OTP, PasswordResetToken
-)
+from .models import ( User ,OTP, PasswordResetToken,Student,  Message, Fee, Payment, Consent, Event)
+    
 from .serializers import (
     MyTokenObtainPairSerializer,
     UserRegistrationSerializer, OTPRequestSerializer, OTPVerifySerializer,
     GoogleAuthSerializer, PasswordChangeSerializer,
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
-    ParentProfileSerializer, MessageThreadSerializer, MessageSerializer, MessageCreateSerializer,
-    FeePaymentSerializer, ConsentSerializer, ConsentActionSerializer
+    ParentProfileSerializer, MessageSerializer, EventSerializer,StudentSummarySerializer,
+    FeeSerializer,PaymentSerializer, ConsentSerializer,FeePaymentSerializer
 )
 from .permissions import IsParent, IsParentOfStudent
 from .services import MockSMSService, EmailService ,PasswordResetService
@@ -335,110 +333,92 @@ class PasswordResetConfirmView(APIView):
 # PARENT-SIDE VIEWS
 # -----------------------
 
-class ParentProfileView(APIView):
-    permission_classes = [IsAuthenticated, IsParent]
-    def get(self, request):
-        parent = get_object_or_404(Parent, user=request.user)
-        serializer = ParentProfileSerializer(parent)
-        return Response(serializer.data)
+
+class ParentProfileView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ParentProfileSerializer
+
+    def get_object(self):
+        return self.request.user
 
 
-# class StudentSummaryView(APIView):
-#     permission_classes = [IsAuthenticated, IsParentOfStudent]
-#     def get(self, request, student_id):
-#         student = get_object_or_404(Student, id=student_id)
-#         self.check_object_permissions(request, student)
-
-#         serializer = StudentSummarySerializer(student)
-#         return Response(serializer.data)
-
-
-# class StudentGradesView(APIView):
-#     permission_classes = [IsAuthenticated, IsParentOfStudent]
-#     def get(self, request, student_id):
-#         student = get_object_or_404(Student, id=student_id)
-#         self.check_object_permissions(request, student)
-
-#         grades = []
-
-#         return Response({
-#             "student": student.get_full_name(),
-#             "grades": grades
-#         }, status=status.HTTP_200_OK)
-
-
-# class StudentAttendanceView(APIView):
-#     permission_classes = [IsAuthenticated, IsParentOfStudent]
-
-#     def get(self, request, student_id):
-#         student = get_object_or_404(Student, id=student_id)
-#         self.check_object_permissions(request, student)
-
-#         attendance = []
-
-#         return Response({
-#             "student": student.get_full_name(),
-#             "attendance": attendance
-#         }, status=status.HTTP_200_OK)
-
-
-class MessageThreadListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated, IsParent]
-    serializer_class = MessageThreadSerializer
-
-    def get_queryset(self):
-        return self.request.user.message_threads.all()
-
-    def perform_create(self, serializer):
-        thread = serializer.save()
-        thread.participants.add(self.request.user)
+class StudentSummaryView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = StudentSummarySerializer
+    queryset = Student.objects.all()
 
 
 class MessageListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated, IsParent]
+    permission_classes = [IsAuthenticated]
     serializer_class = MessageSerializer
 
     def get_queryset(self):
-        thread_id = self.kwargs['thread_id']
-        return Message.objects.filter(thread_id=thread_id)
+        return Message.objects.filter(parent=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
-        thread_id = self.kwargs['thread_id']
-        thread = get_object_or_404(MessageThread, id=thread_id)
-        serializer.save(sender=self.request.user, thread=thread)
-        send_message_notification.delay(thread.id)
+        serializer.save(parent=self.request.user)
 
 
-class FeePaymentView(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated, IsParent]
-    serializer_class = FeePaymentSerializer
-
-    @transaction.atomic
-    def perform_create(self, serializer):
-        payment = serializer.save(paid_by=self.request.user.parent_profile)
-        send_payment_sms.delay(payment.id)
-
-
-class ConsentView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated, IsParent]
+class ConsentListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = ConsentSerializer
 
     def get_queryset(self):
-        return Consent.objects.filter(parent=self.request.user.parent_profile)
+        return Consent.objects.filter(student__parent=self.request.user)
 
 
-class ConsentActionView(APIView):
-    permission_classes = [IsAuthenticated, IsParent]
+class ConsentUpdateView(generics.UpdateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ConsentSerializer
+    lookup_field = "id"  
+    def get_queryset(self):
+        return Consent.objects.filter(student__parent=self.request.user)
 
-    def post(self, request, consent_id):
-        consent = get_object_or_404(Consent, id=consent_id, parent=request.user.parent_profile)
-        serializer = ConsentActionSerializer(data=request.data)
+class EventListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = EventSerializer
+    queryset = Event.objects.all().order_by("date")
+
+
+class StudentFeeView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FeeSerializer
+
+    def get_object(self):
+        student_id = self.kwargs["student_id"]
+        return Fee.objects.get(student__id=student_id, student__parent=self.request.user)
+
+
+class FeePaymentView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = FeePaymentSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        student_id = serializer.validated_data["studentId"]
+        amount = serializer.validated_data["amount"]
+        method = serializer.validated_data["paymentMethod"]
+        transaction_id = serializer.validated_data["transactionId"]
 
-        action = serializer.validated_data.get("action")
-        if action == "grant":
-            consent.grant_consent()
-        else:
-            consent.revoke_consent()
+        fee = Fee.objects.get(student__id=student_id, student__parent=request.user)
+        fee.paid += amount
+        fee.save()
 
-        return Response(ConsentSerializer(consent).data, status=status.HTTP_200_OK)
+        payment = Payment.objects.create(
+            fee=fee, amount=amount, method=method, transaction_id=transaction_id
+        )
+
+        return Response(
+            {
+                "status": "success",
+                "message": "Payment recorded successfully",
+                "newBalance": fee.due,
+                "payment": PaymentSerializer(payment).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+
+

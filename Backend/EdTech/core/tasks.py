@@ -7,7 +7,7 @@ import requests
 import logging
 from .models import User
 
-from .models import Payment, Message, Parent, AuditLog
+from .models import Payment, Message
 
 
 logger = logging.getLogger(__name__)
@@ -208,29 +208,6 @@ def send_bulk_notification(recipient_ids, message_text, notification_type='sms')
     logger.info(f"Bulk notification completed: {success_count} successful, {failed_count} failed")
     return {'success_count': success_count, 'failed_count': failed_count}
 
-# Create audit log entry
-@shared_task
-def create_audit_log(user_id, action_type, model_name, object_id, changes=None, ip_address=None, user_agent=None):
-    
-    try:
-        user = User.objects.get(id=user_id)
-        
-        AuditLog.objects.create(
-            user=user,
-            action_type=action_type,
-            model_name=model_name,
-            object_id=str(object_id),
-            changes=changes,
-            ip_address=ip_address,
-            user_agent=user_agent
-        )
-        
-        logger.info(f"Audit log created: {user} - {action_type} - {model_name}")
-        
-    except User.DoesNotExist:
-        logger.error(f"User {user_id} not found for audit log")
-    except Exception as e:
-        logger.error(f"Failed to create audit log: {e}")
 
 #Send fee payment reminders to parents
 @shared_task
@@ -324,20 +301,6 @@ def generate_attendance_report(class_id, start_date, end_date):
         logger.error(f"Error generating attendance report: {e}")
         return None
 
-# Clean up old audit logs
-@shared_task
-def cleanup_old_audit_logs(days_to_keep=365):
-   
-    try:
-        cutoff_date = timezone.now() - timezone.timedelta(days=days_to_keep)
-        deleted_count = AuditLog.objects.filter(timestamp__lt=cutoff_date).delete()[0]
-        
-        logger.info(f"Cleaned up {deleted_count} old audit log entries")
-        return deleted_count
-        
-    except Exception as e:
-        logger.error(f"Error cleaning up audit logs: {e}")
-        return 0
 
 # Notify parents of new grades posted
 @shared_task

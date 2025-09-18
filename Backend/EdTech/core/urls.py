@@ -20,17 +20,16 @@ urlpatterns = [
 
     # Parent endpoints
     path('parents/me/', views.ParentProfileView.as_view(), name='parent-profile'),
-    # path('parents/dashboard/', views.ParentDashboardView.as_view(), name='parent-dashboard'),
-    # path('parents/students/<int:pk>/summary/', views.StudentSummaryView.as_view(), name='student-summary'),
+    path('parents/students/<int:pk>/summary/', views.StudentSummaryView.as_view(), name='student-summary'),
     # path('parents/students/<int:student_id>/grades/', views.StudentGradesView.as_view(), name='student-grades'),
     # path('parents/students/<int:student_id>/attendance/', views.StudentAttendanceView.as_view(), name='student-attendance'),
     # path('parents/students/<int:student_id>/payments/', views.StudentPaymentHistoryView.as_view(), name='student-payments'),
-    path('parents/messages/threads/', views.MessageThreadListCreateView.as_view(), name='message-threads'),
-    # path('parents/messages/threads/<int:pk>/', views.MessageThreadDetailView.as_view(), name='message-thread-detail'),
     path('parents/messages/', views.MessageListCreateView.as_view(), name='message-create'),
+    path('parents/students/<int:student_id>/fees/', views.StudentFeeView.as_view(), name='student-fees'),
     path('parents/fees/pay/', views.FeePaymentView.as_view(), name='fee-payment'),
-    path('parents/consent/', views.ConsentView.as_view(), name='consent-list'),
-    path('parents/consent/action/', views.ConsentActionView.as_view(), name='consent-action'),
+    path('parents/consent/', views.ConsentListView.as_view(), name='consent-list'),
+    path('parents/consent/<int:id>/action/', views.ConsentUpdateView.as_view(), name='consent-update'),
+    path('parents/events/', views.EventListView.as_view(), name='event-list'),
 
 
 
