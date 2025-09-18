@@ -32,13 +32,18 @@ from .serializers import (
     FeePaymentSerializer, ConsentSerializer, ConsentActionSerializer
 )
 from .permissions import IsParent, IsParentOfStudent
-from .services import MockSMSService, EmailService
+from .services import MockSMSService, EmailService ,PasswordResetService
 from .tasks import send_payment_sms, send_message_notification
 
 
 logger = logging.getLogger(__name__)
 
-
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token)
+    }
 # -----------------------
 # AUTHENTICATION VIEWS
 # -----------------------
@@ -83,10 +88,28 @@ class LoginView(APIView):
             status=status.HTTP_200_OK
         )
         
-class OTPRequestView(generics.CreateAPIView):
+class OTPRequestView(APIView):
     permission_classes = [AllowAny]
-    serializer_class = OTPRequestSerializer
 
+    def post(self, request):
+        serializer = OTPRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        phone = serializer.validated_data.get("phone_number")
+        email = serializer.validated_data.get("email")
+        otp_type = serializer.validated_data.get("otp_type")
+
+        otp = OTP.objects.create(
+            phone_number=phone,
+            email=email,
+            otp_type=otp_type
+        )
+        if phone:
+            MockSMSService.send_otp(phone, otp.code, otp_type)
+        if email:
+            EmailService.send_otp_email(email, otp.code, otp_type)
+
+        return Response({"detail": "OTP sent successfully"}, status=200)
 
 class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
@@ -130,12 +153,67 @@ class OTPVerifyView(APIView):
 
 class GoogleAuthView(generics.GenericAPIView):
     serializer_class = GoogleAuthSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        google_token = serializer.validated_data["token"]
 
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                google_token, google_requests.Request(), settings.GOOGLE_CLIENT_ID
+            )
+            email = idinfo.get("email")
+            if not email:
+                return Response(
+                    {"error": "Email not provided by Google"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            first_name = idinfo.get("given_name", "")
+            last_name = idinfo.get("family_name", "")
+
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    "username": email.split("@")[0],
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "is_active": True,
+                    "is_email_verified": True,
+                }
+            )
+
+            refresh = RefreshToken.for_user(user)
+            tokens = {
+                "refresh": str(refresh),
+                "access": str(refresh.access_token),
+            }
+
+            return Response(
+                {
+                    "message": "Google login successful",
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "user_type": user.user_type,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                        "is_new_user": created,
+                    },
+                    **tokens,
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except ValueError as e:
+            return Response(
+                {"error": "Invalid Google token", "details": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
@@ -166,15 +244,92 @@ class PasswordChangeView(APIView):
         return Response({"detail": "Password changed successfully"}, status=status.HTTP_200_OK)
 
 
-class PasswordResetRequestView(generics.CreateAPIView):
+class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
-    serializer_class = PasswordResetRequestSerializer
 
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data.get('email')
 
-class PasswordResetConfirmView(generics.CreateAPIView):
+            try:
+                user = User.objects.get(email=email)
+                PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
+
+                reset_token = PasswordResetToken.objects.create(user=user)
+
+                success = PasswordResetService.send_password_reset_email(
+                    user_email=user.email,
+                    token=reset_token.token,
+                    username=user.username
+                )
+
+                if success:
+                    logger.info(f"Password reset email sent to {email}")
+                else:
+                    logger.error(f"Failed to send reset email to {email}")
+
+            except User.DoesNotExist:
+                logger.info(f"Password reset requested for non-existent email: {email}")
+                pass
+
+            return Response({
+                "message": "If an account with that email exists, a reset link has been sent.",
+                "expires_in": 3600
+            })
+
+        return Response({
+            "error": "Invalid request data",
+            "details": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
-    serializer_class = PasswordResetConfirmSerializer
 
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        if serializer.is_valid():
+            token = serializer.validated_data.get('token')
+            new_password = serializer.validated_data.get('new_password')
+
+            try:
+                reset_token = PasswordResetToken.objects.get(token=token, is_used=False)
+
+                if not reset_token.is_valid():
+                    return Response({
+                        "error": "Reset link has expired. Please request a new one."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                user = reset_token.user
+                user.set_password(new_password)
+                user.save()
+
+                reset_token.is_used = True
+                reset_token.save()
+
+                logger.info(f"Password reset completed for user {user.username}")
+
+                tokens = get_tokens_for_user(user)
+
+                return Response({
+                    "message": "Password reset successful. You are now logged in.",
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                    },
+                    **tokens
+                })
+
+            except PasswordResetToken.DoesNotExist:
+                return Response({
+                    "error": "Invalid or expired reset link"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            "error": "Invalid request data",
+            "details": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 # -----------------------
 # PARENT-SIDE VIEWS

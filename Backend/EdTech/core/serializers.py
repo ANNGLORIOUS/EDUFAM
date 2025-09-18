@@ -11,6 +11,7 @@ from .models import (
 )
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from phonenumber_field.serializerfields import PhoneNumberField
 from django.contrib.auth import authenticate
 
@@ -35,7 +36,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('username', 'email', 'password', 'password_confirm', 
-                 'first_name', 'last_name', 'phone_number', 'user_type', 'preferred_language')
+                 'first_name', 'last_name', 'phone_number', 'user_type')
     
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
@@ -73,29 +74,26 @@ class OTPVerifySerializer(serializers.Serializer):
         if not phone and not email:
             raise serializers.ValidationError("Either phone_number or email is required.")
 
-        # Match OTP by code + contact
-        try:
-            otp = OTP.objects.get(
-                code=code,
-                is_used=False,
-                phone_number=phone if phone else None,
-                email=email if email else None,
-            )
-        except OTP.DoesNotExist:
+        
+        otp = OTP.objects.filter( code=code,is_used=False, )
+        if phone:
+            otp = otp.filter(phone_number=phone)
+        if email:
+            otp = otp.filter(email=email)
+
+        otp = otp.first()
+        if not otp:
             raise serializers.ValidationError("Invalid or expired OTP.")
 
-        # Check expiry
         if otp.is_expired():
             raise serializers.ValidationError("OTP expired.")
 
-        # Throttling check: prevent too many attempts in 1 min
         recent_attempts = OTP.objects.filter(
             phone_number=phone, email=email, created_at__gte=timezone.now() - timedelta(minutes=1)
         )
-        if recent_attempts.count() > 5:  # adjust limit as needed
+        if recent_attempts.count() > 5:  
             raise serializers.ValidationError("Too many OTP attempts. Please wait before retrying.")
 
-        # Attach OTP to serializer for use in view
         attrs["otp_instance"] = otp
         return attrs
 
@@ -106,19 +104,31 @@ class GoogleAuthSerializer(serializers.Serializer):
 
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True, validators=[validate_password])
+    new_password = serializers.CharField(required=True)
     new_password_confirm = serializers.CharField(required=True)
-    
-    def validate(self, attrs):
-        if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError("New passwords don't match")
-        return attrs
     
     def validate_old_password(self, value):
         user = self.context['request'].user
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect")
         return value
+    
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError("New passwords don't match")
+        
+        try:
+            validate_password(attrs['new_password'], user=self.context['request'].user)
+        except ValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+        
+        return attrs
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
@@ -136,12 +146,18 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True, validators=[validate_password])
+    new_password = serializers.CharField(required=True)
     new_password_confirm = serializers.CharField(required=True)
 
     def validate(self, attrs):
         if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError("Passwords don't match")
+            raise serializers.ValidationError({"new_password_confirm": "Passwords do not match"})
+
+        try:
+            validate_password(attrs['new_password'])
+        except ValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+
         return attrs
 
 class UserBasicSerializer(serializers.ModelSerializer):
