@@ -1,1 +1,0 @@
-export { ResultsProvider } from './ResultsContext';
