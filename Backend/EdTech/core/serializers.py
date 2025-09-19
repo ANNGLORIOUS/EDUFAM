@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from decimal import Decimal
 
-from .models import ( User ,OTP, Student, Grade,Attendance, Message, Fee, Payment, Consent, Event)
+from .models import ( User ,OTP, Student,Subject,Term,Result,Attendance, Message, Fee,Feedback, Payment, Consent, Event)
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -161,89 +161,126 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 # Parents/Student Serializer
 
-class StudentSerializer(serializers.ModelSerializer):
+class StudentNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ["id", "name", "student_id", "class_name"]
+        fields = ['id', 'student_id','name','student_class', 'status', 'date_added']
 
 
 class ParentProfileSerializer(serializers.ModelSerializer):
+    children = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['id', 'first_name', 'last_name', 'email']
+        fields = ['id', 'username', 'email', 'children']
+
+    def get_children(self, obj):
+        students = Student.objects.filter(parent=obj)
+        return StudentNestedSerializer(students, many=True).data
 
 
-class StudentSummarySerializer(serializers.Serializer):
-    student_id = serializers.CharField()
-    name = serializers.CharField()
-    class_name = serializers.CharField()
-    grades = serializers.SerializerMethodField()
-    attendance = serializers.SerializerMethodField()
-    fees = serializers.SerializerMethodField()
 
-    def get_grades(self, obj):
-        return [
-            {"subject": g.subject, "grade": g.score}
-            for g in obj.grades.all()
+class StudentSummarySerializer(serializers.ModelSerializer):
+    student_class = serializers.CharField(source='student_class.name')
+    class Meta:
+        model = Student
+        fields = ['id', 'student_id', 'name','student_class', 'status', 'date_added']
+
+
+
+class SubjectSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Subject
+        fields = ['id', 'name']
+
+
+class TermSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Term
+        fields = ['id', 'name', 'start_date', 'end_date']
+
+
+class StudentGradesSerializer(serializers.ModelSerializer):
+    subject = serializers.StringRelatedField()
+    term = serializers.StringRelatedField()
+    student = serializers.StringRelatedField()
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Result
+        fields = [
+            "id", "student", "subject", "term", "marks", "grade",
+            "comments", "upload_date", "file_url"
         ]
 
-    def get_attendance(self, obj):
-        total = obj.attendance_records.count()
-        present = obj.attendance_records.filter(status="present").count()
-        absent = obj.attendance_records.filter(status="absent").count()
-        percentage = (present / total * 100) if total > 0 else 0
-        return {"present": present, "absent": absent, "percentage": percentage}
+    def get_file_url(self, obj):
+        return obj.file.url if obj.file else None
 
-    def get_fees(self, obj):
-        fee = getattr(obj, "fee", None)
-        if not fee:
-            return {"total": 0, "paid": 0, "due": 0}
-        return {"total": fee.total, "paid": fee.paid, "due": fee.due}
+
+
+
+class StudentAttendanceSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display')
+
+    class Meta:
+        model = Attendance
+        fields = ['id', 'date', 'status', 'status_display', 'recorded_by']
+
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'amount', 'date', 'method', 'transaction_id']
+
+
+class FeeSerializer(serializers.ModelSerializer):
+    paid_amount = serializers.FloatField()
+    due_amount = serializers.SerializerMethodField()
+    payments = PaymentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Fee
+        fields = ['id', 'student', 'term', 'total_fee', 'paid_amount', 'due_amount', 'due_date', 'payments']
+
+    def get_due_amount(self, obj):
+        return obj.total_fee - obj.paid_amount
+
+
+class FeePaymentSerializer(serializers.Serializer):
+    studentId = serializers.IntegerField()
+    amount = serializers.FloatField()
+    paymentMethod = serializers.CharField()
+    transactionId = serializers.CharField()
 
 
 
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
-        fields = ["id", "student", "type", "message", "created_at"]
+        fields = ['id', 'parent', 'teacher', 'subject', 'message', 'created_at', 'read']
+        read_only_fields = ['parent', 'created_at', 'read']
 
 
-class PaymentSerializer(serializers.ModelSerializer):
+
+class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Payment
-        fields = ["id", "amount", "method", "transaction_id", "date"]
+        model = Feedback
+        fields = ['id', 'student', 'concern_type', 'message', 'request_callback',
+                  'schedule_meeting', 'status', 'response', 'timestamp']
 
-
-class FeeSerializer(serializers.ModelSerializer):
-    due = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    paymentHistory = PaymentSerializer(source="payments", many=True, read_only=True)
-
-    class Meta:
-        model = Fee
-        fields = ["total", "paid", "due", "paymentHistory"]
-
-
-class FeePaymentSerializer(serializers.Serializer):
-    studentId = serializers.IntegerField()
-    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
-    paymentMethod = serializers.CharField()
-    transactionId = serializers.CharField()
 
 
 class ConsentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.user.username', read_only=True)
+
     class Meta:
         model = Consent
-        fields = ["id", "student", "consent_type", "status", "created_at"]
-        read_only_fields = ["id", "student", "consent_type", "created_at"]
-    
-    def validate_status(self, value):
-        if value not in ["granted", "denied"]:
-            raise serializers.ValidationError("Status must be 'granted' or 'denied'.")
-        return value
+        fields = ['id', 'student', 'student_name', 'consent_type', 'status', 'created_at']
+
+
 
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ["id", "title", "description", "date"]
-        
-
+        fields = ['id', 'title', 'description', 'start', 'end', 'event_type', 'target_audience']

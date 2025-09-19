@@ -19,17 +19,21 @@ urlpatterns = [
 
 
     # Parent endpoints
-    path('parents/me/', views.ParentProfileView.as_view(), name='parent-profile'),
-    path('parents/students/<int:pk>/summary/', views.StudentSummaryView.as_view(), name='student-summary'),
-    # path('parents/students/<int:student_id>/grades/', views.StudentGradesView.as_view(), name='student-grades'),
-    # path('parents/students/<int:student_id>/attendance/', views.StudentAttendanceView.as_view(), name='student-attendance'),
-    # path('parents/students/<int:student_id>/payments/', views.StudentPaymentHistoryView.as_view(), name='student-payments'),
-    path('parents/messages/', views.MessageListCreateView.as_view(), name='message-create'),
-    path('parents/students/<int:student_id>/fees/', views.StudentFeeView.as_view(), name='student-fees'),
-    path('parents/fees/pay/', views.FeePaymentView.as_view(), name='fee-payment'),
-    path('parents/consent/', views.ConsentListView.as_view(), name='consent-list'),
-    path('parents/consent/<int:id>/action/', views.ConsentUpdateView.as_view(), name='consent-update'),
-    path('parents/events/', views.EventListView.as_view(), name='event-list'),
+    path('parent/me/', views.ParentProfileView.as_view(), name='parent-profile'),
+    path('parent/children/', views.StudentSummaryView.as_view(), name='parent-children'),
+    path('parent/results/', views.StudentGradesView.as_view(), name='parent-results'),
+    path('parent/results/download/<int:result_id>/', views.ResultDownloadView.as_view(), name='result-download'),
+    path('parent/attendance/', views.StudentAttendanceView.as_view(), name='parent-attendance'),
+    path('parent/fees/', views.StudentFeeView.as_view(), name='parent-fees'),
+    path('parent/fees/pay/', views.FeePaymentView.as_view(), name='parent-fee-payment'),
+    path('parent/payments/history/', views.StudentPaymentHistoryView.as_view(), name='parent-payment-history'),
+    path('parent/messages/', views.MessageListCreateView.as_view(), name='parent-messages'),
+    path('parent/feedback/', views.FeedbackCreateView.as_view(), name='parent-feedback-create'),
+    path('parent/feedback/history/', views.FeedbackListView.as_view(), name='parent-feedback-list'),
+    path('parent/consent/', views.ConsentListView.as_view(), name='parent-consent-list'),
+    path('parent/consent/<int:id>/', views.ConsentUpdateView.as_view(), name='parent-consent-update'),
+    path('parent/events/', views.EventListView.as_view(), name='parent-events'),
+
     path("ussd/", ussd_views.ussd_callback, name="ussd"),
 
 
