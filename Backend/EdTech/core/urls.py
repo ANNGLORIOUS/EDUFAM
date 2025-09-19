@@ -1,6 +1,6 @@
 from django.urls import path, include
 from django.urls import path, include
-from . import views
+from . import views,ussd_views
 from rest_framework_simplejwt.views import TokenRefreshView
 
 
@@ -30,6 +30,7 @@ urlpatterns = [
     path('parents/consent/', views.ConsentListView.as_view(), name='consent-list'),
     path('parents/consent/<int:id>/action/', views.ConsentUpdateView.as_view(), name='consent-update'),
     path('parents/events/', views.EventListView.as_view(), name='event-list'),
+    path("ussd/", ussd_views.ussd_callback, name="ussd"),
 
 
 

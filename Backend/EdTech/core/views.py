@@ -1,26 +1,18 @@
 from django.shortcuts import get_object_or_404
-from django.db import transaction
-from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, update_session_auth_hash
 from django.db.models import Q
-
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
-
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-
 import logging
-
 from .models import ( User ,OTP, PasswordResetToken,Student,  Message, Fee, Payment, Consent, Event)
-    
 from .serializers import (
     MyTokenObtainPairSerializer,
     UserRegistrationSerializer, OTPRequestSerializer, OTPVerifySerializer,
@@ -418,7 +410,6 @@ class FeePaymentView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
 
 
 
