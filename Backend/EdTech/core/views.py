@@ -5,23 +5,46 @@ from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 
-from .models import AttendanceRecord, GradeRecord, StudentFlag, Event, USSDConfig
+from .models import (
+    Student,
+    Teacher,
+    Parent,
+    AttendanceRecord,
+    GradeRecord,
+    StudentFlag,
+    Event,
+    FeeAccount,
+    Payment,
+    Feedback,
+    SMSCampaign,
+    AuditLog,
+    USSDConfig,
+)
 from .serializers import (
+    RegisterSerializer,
+    UserSerializer,
+    StudentSerializer,
+    ParentSerializer,
+    TeacherSerializer,
     AttendanceRecordSerializer,
     GradeRecordSerializer,
     StudentFlagSerializer,
     EventSerializer,
+    FeeAccountSerializer,
+    PaymentSerializer,
+    FeedbackSerializer,
+    SMSCampaignSerializer,
+    AuditLogSerializer,
     USSDConfigSerializer,
-    RegisterSerializer,
-    UserSerializer,
 )
-
-from .permissions import IsTeacher, IsAdmin
+from .permissions import IsTeacher, IsAdmin, IsParent
 
 User = get_user_model()
 
 
-# Auth / Register
+# ----------------------
+# AUTH
+# ----------------------
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
@@ -29,39 +52,56 @@ class RegisterView(generics.CreateAPIView):
 
 
 # ----------------------
-# TEACHER VIEWS
+# STUDENT
+# ----------------------
+class StudentListCreateView(generics.ListCreateAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class StudentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    permission_classes = [IsAuthenticated]
+
+# ----------------------
+# PARENT
+# ----------------------
+
+# Parent can update their own profile
+class ParentProfileView(generics.RetrieveUpdateAPIView):
+    queryset = Parent.objects.all()
+    serializer_class = ParentSerializer
+    permission_classes = [IsAuthenticated, IsParent]
+
+    def get_object(self):
+        return self.request.user.parent_profile
+
+
+# Admin / Teacher can view all parents
+class ParentListView(generics.ListAPIView):
+    queryset = Parent.objects.select_related("user").all()
+    serializer_class = ParentSerializer
+    permission_classes = [IsAuthenticated, IsAdmin | IsTeacher]
+
+
+# ----------------------
+# TEACHER
+# ----------------------
+class TeacherView(generics.ListCreateAPIView):
+    queryset = Teacher.objects.all()
+    serializer_class = TeacherSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+
+# ----------------------
+# ATTENDANCE
 # ----------------------
 class AttendanceBulkUploadView(generics.CreateAPIView):
     queryset = AttendanceRecord.objects.all()
     serializer_class = AttendanceRecordSerializer
     permission_classes = [IsAuthenticated, IsTeacher]
-
-
-class GradeBulkUploadView(generics.CreateAPIView):
-    queryset = GradeRecord.objects.all()
-    serializer_class = GradeRecordSerializer
-    permission_classes = [IsAuthenticated, IsTeacher]
-
-
-class StudentFlagView(generics.CreateAPIView):
-    queryset = StudentFlag.objects.all()
-    serializer_class = StudentFlagSerializer
-    permission_classes = [IsAuthenticated, IsTeacher]
-
-
-class EventView(generics.CreateAPIView):
-    queryset = Event.objects.all()
-    serializer_class = EventSerializer
-    permission_classes = [IsAuthenticated, IsTeacher]
-
-
-# ----------------------
-# ADMIN VIEWS
-# ----------------------
-class UserApprovalView(generics.ListAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsAdmin]
 
 
 class AttendanceReportView(generics.ListAPIView):
@@ -70,10 +110,80 @@ class AttendanceReportView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsAdmin]
 
 
+# ----------------------
+# GRADES
+# ----------------------
+class GradeBulkUploadView(generics.CreateAPIView):
+    queryset = GradeRecord.objects.all()
+    serializer_class = GradeRecordSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+
+# ----------------------
+# FLAGS
+# ----------------------
+class StudentFlagView(generics.CreateAPIView):
+    queryset = StudentFlag.objects.all()
+    serializer_class = StudentFlagSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+
+# ----------------------
+# EVENTS
+# ----------------------
+class EventView(generics.ListCreateAPIView):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ----------------------
+# FEES
+# ----------------------
+class FeeAccountView(generics.RetrieveUpdateAPIView):
+    queryset = FeeAccount.objects.all()
+    serializer_class = FeeAccountSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+
+class PaymentView(generics.CreateAPIView):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+
+# ----------------------
+# FEEDBACK
+# ----------------------
+class FeedbackView(generics.ListCreateAPIView):
+    queryset = Feedback.objects.all()
+    serializer_class = FeedbackSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ----------------------
+# SMS CAMPAIGNS
+# ----------------------
+class SMSCampaignView(generics.ListCreateAPIView):
+    queryset = SMSCampaign.objects.all()
+    serializer_class = SMSCampaignSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+
+# ----------------------
+# ADMIN TOOLS
+# ----------------------
+class AuditLogView(generics.ListAPIView):
+    queryset = AuditLog.objects.all()
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+
 class USSDConfigView(generics.CreateAPIView):
     queryset = USSDConfig.objects.all()
     serializer_class = USSDConfigSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+
 
 @csrf_exempt
 def ussd_callback(request):
@@ -83,24 +193,18 @@ def ussd_callback(request):
     text = request.POST.get("text", "")
 
     steps = text.split("*") if text else []
-
-    # get latest config
     config = USSDConfig.objects.latest("updated_at")
     menu = config.menu_json
     menus = menu.get("menus", {})
 
     response = "END Invalid option"
 
-    # root menu
     if not steps:
         options = "\n".join([f"{k}. {v['text']}" for k, v in menus.items()])
         response = f"CON {menu['welcome_text']}\n{options}"
-
     else:
-        # Traverse JSON tree
         current = menus
         node = None
-
         for step in steps:
             if step in current:
                 node = current[step]
@@ -108,7 +212,6 @@ def ussd_callback(request):
             else:
                 response = "END Invalid choice"
                 break
-
         if node:
             if node.get("type") == "END":
                 response = f"END {node.get('message', 'Goodbye')}"

@@ -6,23 +6,34 @@ import datetime
 
 from .models import (
     Student,
+    Teacher,
+    Parent,
     AttendanceRecord,
     GradeRecord,
     StudentFlag,
     Event,
-    AuditLog,
-    USSDConfig,
     FeeAccount,
     Payment,
+    Feedback,
+    SMSCampaign,
+    AuditLog,
+    USSDConfig,
 )
 
 User = get_user_model()
 
 
-# --------- Auth / User ----------
+# ----------------------
+# AUTH / USER
+# ----------------------
 class RegisterSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(required=True, validators=[UniqueValidator(queryset=User.objects.all())])
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password])
+    email = serializers.EmailField(
+        required=True,
+        validators=[UniqueValidator(queryset=User.objects.all())],
+    )
+    password = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password]
+    )
     password2 = serializers.CharField(write_only=True, required=True)
 
     class Meta:
@@ -49,19 +60,43 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "role"]
 
 
-# --------- Student ----------
+# ----------------------
+# STUDENT
+# ----------------------
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = "__all__"
 
 
-# --------- Attendance ----------
+# ----------------------
+# PARENT
+# ----------------------
+class ParentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Parent
+        fields = ["id", "user", "phone_number", "occupation", "address"]
+
+
+# ----------------------
+# TEACHER
+# ----------------------
+class TeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = "__all__"
+
+
+# ----------------------
+# ATTENDANCE
+# ----------------------
 class AttendanceRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = AttendanceRecord
         fields = "__all__"
-        read_only_fields = ("created_at",)
+        read_only_fields = ("created_at", "attendance_percent")
 
     def validate_date(self, value):
         if value > datetime.date.today():
@@ -69,7 +104,9 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         return value
 
 
-# --------- Grades ----------
+# ----------------------
+# GRADES
+# ----------------------
 class GradeRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = GradeRecord
@@ -77,12 +114,14 @@ class GradeRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ("created_at",)
 
     def validate_grade(self, value):
-        if value < 0 or value > 100:
-            raise serializers.ValidationError("Grade must be between 0 and 100.")
+        if len(value) > 2:  # e.g. "A", "B+", "C-"
+            raise serializers.ValidationError("Grade must be a valid letter grade (e.g. A, B+).")
         return value
 
 
-# --------- Flags ----------
+# ----------------------
+# FLAGS
+# ----------------------
 class StudentFlagSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentFlag
@@ -90,7 +129,9 @@ class StudentFlagSerializer(serializers.ModelSerializer):
         read_only_fields = ("created_at",)
 
 
-# --------- Events ----------
+# ----------------------
+# EVENTS
+# ----------------------
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
@@ -98,7 +139,45 @@ class EventSerializer(serializers.ModelSerializer):
         read_only_fields = ("created_at",)
 
 
-# --------- Admin ----------
+# ----------------------
+# FEES
+# ----------------------
+class FeeAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeeAccount
+        fields = "__all__"
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = "__all__"
+        read_only_fields = ("date",)
+
+
+# ----------------------
+# FEEDBACK
+# ----------------------
+class FeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Feedback
+        fields = "__all__"
+        read_only_fields = ("timestamp",)
+
+
+# ----------------------
+# SMS CAMPAIGNS
+# ----------------------
+class SMSCampaignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SMSCampaign
+        fields = "__all__"
+        read_only_fields = ("created_at",)
+
+
+# ----------------------
+# ADMIN TOOLS
+# ----------------------
 class AuditLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditLog
@@ -111,17 +190,3 @@ class USSDConfigSerializer(serializers.ModelSerializer):
         model = USSDConfig
         fields = "__all__"
         read_only_fields = ("updated_at",)
-
-
-# --------- Fees ----------
-class FeeAccountSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FeeAccount
-        fields = "__all__"
-
-
-class PaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = "__all__"
-        read_only_fields = ("date",)

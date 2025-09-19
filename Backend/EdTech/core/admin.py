@@ -2,19 +2,25 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User,
-    Teacher,
     Student,
+    Teacher,
+    Parent,
     AttendanceRecord,
     GradeRecord,
     StudentFlag,
     Event,
     FeeAccount,
     Payment,
+    Feedback,
+    SMSCampaign,
     AuditLog,
     USSDConfig,
 )
 
 
+# ----------------------
+# USER ADMIN
+# ----------------------
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = ("username", "email", "role", "is_staff", "is_active")
@@ -22,100 +28,145 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name", "email")}),
-        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions", "role")}),
+        (
+            "Permissions",
+            {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions", "role")},
+        ),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
-    add_fieldsets = ((None, {"classes": ("wide",), "fields": ("username", "email", "password1", "password2", "role")}),)
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("username", "email", "password1", "password2", "role"),
+            },
+        ),
+    )
     search_fields = ("username", "email")
     ordering = ("username",)
 
 
+# ----------------------
+# STUDENT
+# ----------------------
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ("id", "first_name", "last_name", "classroom", "grade")
-    search_fields = ("first_name", "last_name", "classroom")
+    list_display = ("id", "student_id", "first_name", "last_name", "classroom", "grade", "status")
+    search_fields = ("first_name", "last_name", "student_id", "parent_email", "classroom")
+    list_filter = ("status", "grade", "classroom")
     filter_horizontal = ("parents",)
 
 
+# ----------------------
+# PARENT
+# ----------------------
+@admin.register(Parent)
+class ParentAdmin(admin.ModelAdmin):
+    list_display = ("user", "phone_number", "occupation", "address")
+    search_fields = ("user__username", "user__email", "phone_number", "occupation")
+
+# ----------------------
+# TEACHER
+# ----------------------
 @admin.register(Teacher)
 class TeacherAdmin(admin.ModelAdmin):
     list_display = ("id", "user", "subject")
-    search_fields = ("user__username", "subject")
+    search_fields = ("user__username", "user__email", "subject")
 
 
+# ----------------------
+# ATTENDANCE
+# ----------------------
 @admin.register(AttendanceRecord)
 class AttendanceAdmin(admin.ModelAdmin):
-    list_display = ("student", "date", "status", "recorded_by", "created_at")
-    list_filter = ("status", "date")
-    search_fields = ("student__first_name", "student__last_name")
+    list_display = ("student", "term", "date", "attendance_percent", "status", "recorded_by", "created_at")
+    list_filter = ("status", "term", "date")
+    search_fields = ("student__first_name", "student__last_name", "student__student_id")
 
 
+# ----------------------
+# GRADES
+# ----------------------
 @admin.register(GradeRecord)
 class GradeAdmin(admin.ModelAdmin):
-    list_display = ("student", "subject", "grade", "recorded_by", "created_at")
-    search_fields = ("student__first_name", "student__last_name", "subject")
+    list_display = ("student", "subject", "term", "grade", "recorded_by", "created_at")
+    list_filter = ("term", "subject")
+    search_fields = ("student__first_name", "student__last_name", "student__student_id", "subject")
 
 
+# ----------------------
+# FLAGS
+# ----------------------
 @admin.register(StudentFlag)
 class StudentFlagAdmin(admin.ModelAdmin):
     list_display = ("student", "flag_type", "created_by", "created_at")
     list_filter = ("flag_type",)
+    search_fields = ("student__first_name", "student__last_name")
 
 
+# ----------------------
+# EVENTS
+# ----------------------
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ("title", "date", "created_by")
-    search_fields = ("title",)
+    list_display = ("title", "date", "start_time", "end_time", "created_by")
+    search_fields = ("title", "description")
+    list_filter = ("date",)
 
 
+# ----------------------
+# FEES & PAYMENTS
+# ----------------------
 @admin.register(FeeAccount)
 class FeeAccountAdmin(admin.ModelAdmin):
-    list_display = ("student", "balance")
+    list_display = ("student", "balance", "currency", "next_payment_due")
+    list_filter = ("currency",)
+    search_fields = ("student__first_name", "student__last_name", "student__student_id")
 
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ("fee_account", "amount", "date")
+    search_fields = ("fee_account__student__first_name", "fee_account__student__last_name")
+    list_filter = ("date",)
 
 
+# ----------------------
+# FEEDBACK
+# ----------------------
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ("student", "parent_name", "parent_email", "concern_type", "status", "timestamp")
+    list_filter = ("status", "concern_type")
+    search_fields = ("parent_email", "parent_name", "message")
+
+
+# ----------------------
+# SMS CAMPAIGNS
+# ----------------------
+@admin.register(SMSCampaign)
+class SMSCampaignAdmin(admin.ModelAdmin):
+    list_display = ("id", "message", "recipient_type", "recipient_count", "status", "scheduled_at", "created_by", "created_at")
+    list_filter = ("status", "recipient_type")
+    search_fields = ("message",)
+
+
+# ----------------------
+# AUDIT LOG
+# ----------------------
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
     list_display = ("action", "user", "timestamp")
-    search_fields = ("action", "user__username")
+    search_fields = ("action", "user__username", "user__email")
+    list_filter = ("timestamp",)
 
 
+# ----------------------
+# USSD CONFIG
+# ----------------------
 @admin.register(USSDConfig)
 class USSDConfigAdmin(admin.ModelAdmin):
-    list_display = ("updated_at", "updated_by")
-
-{
-  "welcome_text": "Welcome to EdTech",
-  "menus": {
-    "1": {
-      "text": "Attendance",
-      "children": {
-        "1": {
-          "text": "Today’s Attendance",
-          "type": "END",
-          "message": "Attendance for today is 95%"
-        },
-        "2": {
-          "text": "Monthly Attendance",
-          "type": "END",
-          "message": "Monthly average is 92%"
-        }
-      }
-    },
-    "2": {
-      "text": "Exams",
-      "children": {
-        "1": {
-          "text": "Results",
-          "type": "END",
-          "message": "Exam results will be posted soon"
-        }
-      }
-    }
-  }
-}
-
+    list_display = ("name", "updated_at", "updated_by")
+    search_fields = ("name",)
+    list_filter = ("updated_at",)
