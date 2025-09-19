@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User,
@@ -16,6 +16,7 @@ from .models import (
     AuditLog,
     USSDConfig,
 )
+from .services.sms_service import send_sms
 
 
 # ----------------------
@@ -147,10 +148,44 @@ class FeedbackAdmin(admin.ModelAdmin):
 # ----------------------
 @admin.register(SMSCampaign)
 class SMSCampaignAdmin(admin.ModelAdmin):
-    list_display = ("id", "message", "recipient_type", "recipient_count", "status", "scheduled_at", "created_by", "created_at")
+    list_display = (
+        "id", "message", "recipient_type", "recipient_count",
+        "status", "scheduled_at", "created_by", "created_at"
+    )
     list_filter = ("status", "recipient_type")
     search_fields = ("message",)
+    actions = ["send_campaign"]
 
+    def send_campaign(self, request, queryset):
+        for campaign in queryset:
+            if campaign.status == "sent":
+                self.message_user(request, f"Campaign {campaign.id} already sent.", level=messages.WARNING)
+                continue
+
+            sent, failed = 0, 0
+            students = Student.objects.all()
+
+            for student in students:
+                for parent in student.parents.all():
+                    if hasattr(parent, "parent_profile") and parent.parent_profile.phone_number:
+                        try:
+                            send_sms(parent.parent_profile.phone_number, campaign.message)
+                            sent += 1
+                        except Exception:
+                            failed += 1
+
+            campaign.delivery_stats = {"sent": sent, "failed": failed}
+            campaign.recipient_count = sent + failed
+            campaign.status = "sent"
+            campaign.save()
+
+            self.message_user(
+                request,
+                f"✅ Campaign {campaign.id} sent! Delivered: {sent}, Failed: {failed}.",
+                level=messages.SUCCESS
+            )
+
+    send_campaign.short_description = "🚀 Send selected SMS Campaign(s)"
 
 # ----------------------
 # AUDIT LOG

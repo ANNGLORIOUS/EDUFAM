@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
+from django.conf import settings
 
 from .models import (
     Student,
@@ -185,14 +186,22 @@ class USSDConfigView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated, IsAdmin]
 
 
+
 @csrf_exempt
 def ussd_callback(request):
+    # Optional: Verify with API Key if configured
+    api_key = request.headers.get("X-API-Key")
+    if api_key and api_key != settings.AT_USSD_API_KEY:
+        return HttpResponse("END Unauthorized", content_type="text/plain")
+
     session_id = request.POST.get("sessionId")
     service_code = request.POST.get("serviceCode")
     phone_number = request.POST.get("phoneNumber")
     text = request.POST.get("text", "")
 
     steps = text.split("*") if text else []
+
+    # Get latest config
     config = USSDConfig.objects.latest("updated_at")
     menu = config.menu_json
     menus = menu.get("menus", {})
@@ -200,11 +209,13 @@ def ussd_callback(request):
     response = "END Invalid option"
 
     if not steps:
+        # Root menu
         options = "\n".join([f"{k}. {v['text']}" for k, v in menus.items()])
         response = f"CON {menu['welcome_text']}\n{options}"
     else:
         current = menus
         node = None
+
         for step in steps:
             if step in current:
                 node = current[step]
@@ -212,6 +223,7 @@ def ussd_callback(request):
             else:
                 response = "END Invalid choice"
                 break
+
         if node:
             if node.get("type") == "END":
                 response = f"END {node.get('message', 'Goodbye')}"

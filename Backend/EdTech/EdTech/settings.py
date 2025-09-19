@@ -14,13 +14,19 @@ from pathlib import Path
 
 import os
 from dotenv import load_dotenv
+import africastalking
 
 load_dotenv()
 
-AFRICASTALKING = {
-    "USERNAME": os.getenv("AT_USERNAME", "Sandbox"),
-    "API_KEY": os.getenv("AT_API_KEY"),
-}
+AT_USERNAME = os.getenv("AT_USERNAME", "Sandbox")
+AT_SMS_API_KEY = os.getenv("AT_SMS_API_KEY")
+AT_USSD_API_KEY = os.getenv("AT_USSD_API_KEY")
+
+# Initialize AT for SMS
+africastalking.initialize(AT_USERNAME, AT_SMS_API_KEY)
+sms = africastalking.SMS
+
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
