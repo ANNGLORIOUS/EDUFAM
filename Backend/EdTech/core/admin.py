@@ -179,6 +179,18 @@ class SMSCampaignAdmin(admin.ModelAdmin):
             campaign.status = "sent"
             campaign.save()
 
+            # 🔹 Log action
+            AuditLog.objects.create(
+                user=request.user,
+                action="SMS Campaign Sent",
+                details={
+                    "campaign_id": campaign.id,
+                    "message": campaign.message[:50],
+                    "sent": sent,
+                    "failed": failed,
+                },
+            )
+
             self.message_user(
                 request,
                 f"✅ Campaign {campaign.id} sent! Delivered: {sent}, Failed: {failed}.",

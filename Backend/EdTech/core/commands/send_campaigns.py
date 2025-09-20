@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from core.models import SMSCampaign, Student
+from core.models import SMSCampaign, Student, AuditLog
 from core.services.sms_service import send_sms
 
 class Command(BaseCommand):
@@ -31,6 +31,18 @@ class Command(BaseCommand):
             campaign.recipient_count = sent + failed
             campaign.status = "sent"
             campaign.save()
+
+            # 🔹 Log system action (user=None since cron runs it)
+            AuditLog.objects.create(
+                user=None,
+                action="Scheduled SMS Campaign Sent",
+                details={
+                    "campaign_id": campaign.id,
+                    "message": campaign.message[:50],
+                    "sent": sent,
+                    "failed": failed,
+                },
+            )
 
             self.stdout.write(
                 self.style.SUCCESS(

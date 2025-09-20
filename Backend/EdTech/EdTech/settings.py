@@ -14,17 +14,16 @@ from pathlib import Path
 
 import os
 from dotenv import load_dotenv
-import africastalking
+
 
 load_dotenv()
 
-AT_USERNAME = os.getenv("AT_USERNAME", "Sandbox")
+AT_USERNAME = os.getenv("AT_USERNAME", "sandbox") 
+
 AT_SMS_API_KEY = os.getenv("AT_SMS_API_KEY")
 AT_USSD_API_KEY = os.getenv("AT_USSD_API_KEY")
 
-# Initialize AT for SMS
-africastalking.initialize(AT_USERNAME, AT_SMS_API_KEY)
-sms = africastalking.SMS
+
 
 
 
@@ -152,3 +151,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
