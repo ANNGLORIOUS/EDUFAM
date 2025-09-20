@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
     "core",
+    'django_seed',
 ]
 AUTH_USER_MODEL = "core.User"
 

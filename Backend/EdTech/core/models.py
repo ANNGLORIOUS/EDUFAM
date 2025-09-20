@@ -17,7 +17,7 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.role})"
-    
+
 
 # ----------------------
 # PARENT MODEL
@@ -35,7 +35,6 @@ class Parent(models.Model):
 
     def __str__(self):
         return f"Parent: {self.user.get_full_name()} ({self.phone_number or 'No phone'})"
-
 
 
 # ----------------------
@@ -85,7 +84,7 @@ class AttendanceRecord(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     date = models.DateField()
     term = models.CharField(max_length=32, default="Term 1")
-    weeks = models.JSONField(default=list, blank=True)  # e.g. [true, false, ...]
+    weeks = models.JSONField(default=list, blank=True)  # e.g. [1, 0, 1, ...]
     attendance_percent = models.IntegerField(default=0)
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="present")
     recorded_by = models.ForeignKey(
@@ -101,8 +100,13 @@ class AttendanceRecord(models.Model):
         ordering = ["-date"]
 
     def save(self, *args, **kwargs):
+        """Ensure weeks are numeric before calculating percent."""
         if self.weeks:
-            self.attendance_percent = int((sum(self.weeks) / len(self.weeks)) * 100)
+            numeric_weeks = [int(w) for w in self.weeks if str(w).isdigit()]
+            if numeric_weeks:
+                self.attendance_percent = int((sum(numeric_weeks) / len(numeric_weeks)) * 100)
+            else:
+                self.attendance_percent = 0
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -233,7 +237,6 @@ class SMSCampaign(models.Model):
     delivery_stats = models.JSONField(null=True, blank=True)
     scheduled_at = models.DateTimeField(null=True, blank=True)
 
-
     def __str__(self):
         return f"SMS Campaign: {self.message[:30]}"
 
@@ -242,10 +245,6 @@ class SMSCampaign(models.Model):
 # ADMIN TOOLS
 # ----------------------
 class AuditLog(models.Model):
-    """
-    Tracks who did what and when.
-    Useful for accountability, debugging, and admin dashboards.
-    """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     action = models.CharField(max_length=255)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -261,11 +260,7 @@ def validate_menu_json(value):
 
 
 class USSDConfig(models.Model):
-    """
-    Stores USSD menu configuration in JSON format.
-    Allows dynamic updates without code changes.
-    """
-    name = models.CharField(max_length=100, default="default", unique=True)
+    name = models.CharField(max_length=100, unique=True)
     menu_json = models.JSONField(default=dict, blank=True, validators=[validate_menu_json])
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
