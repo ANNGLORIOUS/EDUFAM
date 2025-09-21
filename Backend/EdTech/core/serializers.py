@@ -1,62 +1,114 @@
-from rest_framework import serializers
-from django.db.models import Avg, Count, Sum
-from django.utils import timezone
-from datetime import timedelta
-
-from decimal import Decimal
-
-from .models import ( User ,OTP, Student,Subject,Term,Result,Attendance, Message, Fee,Feedback, Payment, Consent, Event)
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from phonenumber_field.serializerfields import PhoneNumberField
-from django.contrib.auth import authenticate
+from django.utils import timezone
+from datetime import timedelta
+import datetime
 
+from .models import (
+    OTP,
+    Student,
+    Teacher,
+    Parent,
+    Subject,
+    Term,
+    Result,
+    Attendance,
+    AttendanceRecord,
+    GradeRecord,
+    StudentFlag,
+    Event,
+    Fee,
+    FeeAccount,
+    Payment,
+    Message,
+    Feedback,
+    Consent,
+    SMSCampaign,
+    AuditLog,
+    USSDConfig,
+)
 
-# User Serializer
+User = get_user_model()
 
+# ----------------------
+# AUTH / USER
+# ----------------------
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
-        data.update({
-            'user_id': self.user.id,
-            'username': self.user.username,
-            'email': self.user.email,
-        })
+        data.update(
+            {
+                "user_id": self.user.id,
+                "username": self.user.username,
+                "email": self.user.email,
+                "role": self.user.role,
+            }
+        )
         return data
 
 
-class UserRegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    password_confirm = serializers.CharField(write_only=True)
-    
+class RegisterSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(
+        required=True, validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    password = serializers.CharField(
+        write_only=True, required=True, validators=[validate_password]
+    )
+    password2 = serializers.CharField(write_only=True, required=True)
+
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password_confirm', 
-                 'first_name', 'last_name', 'phone_number', 'user_type')
-    
+        fields = (
+            "username",
+            "email",
+            "password",
+            "password2",
+            "first_name",
+            "last_name",
+            "phone_number",
+            "role",
+        )
+
     def validate(self, attrs):
-        if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError("Passwords don't match")
+        if attrs["password"] != attrs["password2"]:
+            raise serializers.ValidationError({"password": "Passwords don't match."})
         return attrs
-    
+
     def create(self, validated_data):
-        validated_data.pop('password_confirm')
-        password = validated_data.pop('password')
-        user = User.objects.create_user(**validated_data)
+        validated_data.pop("password2")
+        password = validated_data.pop("password")
+        user = User(**validated_data)
         user.set_password(password)
         user.save()
         return user
 
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "role", "first_name", "last_name"]
+
+
+# ----------------------
+# OTP
+# ----------------------
 class OTPRequestSerializer(serializers.Serializer):
     phone_number = PhoneNumberField(required=False)
     email = serializers.EmailField(required=False)
-    otp_type = serializers.ChoiceField(choices=OTP.OTP_TYPE, default='login')
-    
+    otp_type = serializers.ChoiceField(choices=OTP.OTP_TYPE, default="login")
+
     def validate(self, attrs):
-        if not attrs.get('phone_number') and not attrs.get('email'):
-            raise serializers.ValidationError("Either phone_number or email is required")
+        if not attrs.get("phone_number") and not attrs.get("email"):
+            raise serializers.ValidationError(
+                "Either phone_number or email is required"
+            )
         return attrs
+
 
 class OTPVerifySerializer(serializers.Serializer):
     phone_number = serializers.CharField(required=False)
@@ -69,10 +121,11 @@ class OTPVerifySerializer(serializers.Serializer):
         code = attrs.get("code")
 
         if not phone and not email:
-            raise serializers.ValidationError("Either phone_number or email is required.")
+            raise serializers.ValidationError(
+                "Either phone_number or email is required."
+            )
 
-        
-        otp = OTP.objects.filter( code=code,is_used=False, )
+        otp = OTP.objects.filter(code=code, is_used=False)
         if phone:
             otp = otp.filter(phone_number=phone)
         if email:
@@ -86,10 +139,14 @@ class OTPVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError("OTP expired.")
 
         recent_attempts = OTP.objects.filter(
-            phone_number=phone, email=email, created_at__gte=timezone.now() - timedelta(minutes=1)
+            phone_number=phone,
+            email=email,
+            created_at__gte=timezone.now() - timedelta(minutes=1),
         )
-        if recent_attempts.count() > 5:  
-            raise serializers.ValidationError("Too many OTP attempts. Please wait before retrying.")
+        if recent_attempts.count() > 5:
+            raise serializers.ValidationError(
+                "Too many OTP attempts. Please wait before retrying."
+            )
 
         attrs["otp_instance"] = otp
         return attrs
@@ -99,46 +156,40 @@ class GoogleAuthSerializer(serializers.Serializer):
     token = serializers.CharField()
 
 
+# ----------------------
+# PASSWORD MGMT
+# ----------------------
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
     new_password_confirm = serializers.CharField(required=True)
-    
+
     def validate_old_password(self, value):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if not user.check_password(value):
             raise serializers.ValidationError("Old password is incorrect")
         return value
-    
+
     def validate(self, attrs):
-        if attrs['new_password'] != attrs['new_password_confirm']:
+        if attrs["new_password"] != attrs["new_password_confirm"]:
             raise serializers.ValidationError("New passwords don't match")
-        
+
         try:
-            validate_password(attrs['new_password'], user=self.context['request'].user)
+            validate_password(attrs["new_password"], user=self.context["request"].user)
         except ValidationError as e:
             raise serializers.ValidationError({"new_password": list(e.messages)})
-        
+
         return attrs
 
     def save(self, **kwargs):
-        user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
+        user = self.context["request"].user
+        user.set_password(self.validated_data["new_password"])
         user.save()
         return user
 
+
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
-    
-    def validate(self, attrs):
-        email = attrs.get("email")
-        if not email:
-            raise serializers.ValidationError("Email is required")
-        
-        if not User.objects.filter(email=email).exists():
-            pass
-        
-        return attrs
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
@@ -147,24 +198,26 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     new_password_confirm = serializers.CharField(required=True)
 
     def validate(self, attrs):
-        if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError({"new_password_confirm": "Passwords do not match"})
+        if attrs["new_password"] != attrs["new_password_confirm"]:
+            raise serializers.ValidationError(
+                {"new_password_confirm": "Passwords do not match"}
+            )
 
         try:
-            validate_password(attrs['new_password'])
+            validate_password(attrs["new_password"])
         except ValidationError as e:
             raise serializers.ValidationError({"new_password": list(e.messages)})
 
         return attrs
 
 
-
-# Parents/Student Serializer
-
+# ----------------------
+# STUDENTS / PARENTS / TEACHERS
+# ----------------------
 class StudentNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'student_id','name','student_class', 'status', 'date_added']
+        fields = ["id", "student_id", "name", "student_class", "status", "date_added"]
 
 
 class ParentProfileSerializer(serializers.ModelSerializer):
@@ -172,32 +225,46 @@ class ParentProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'children']
+        fields = ["id", "username", "email", "children"]
 
     def get_children(self, obj):
         students = Student.objects.filter(parent=obj)
         return StudentNestedSerializer(students, many=True).data
 
 
-
-class StudentSummarySerializer(serializers.ModelSerializer):
-    student_class = serializers.CharField(source='student_class.name')
+class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'student_id', 'name','student_class', 'status', 'date_added']
+        fields = "__all__"
 
 
+class ParentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
 
+    class Meta:
+        model = Parent
+        fields = ["id", "user", "phone_number", "occupation", "address"]
+
+
+class TeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = "__all__"
+
+
+# ----------------------
+# ACADEMICS
+# ----------------------
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subject
-        fields = ['id', 'name']
+        fields = ["id", "name"]
 
 
 class TermSerializer(serializers.ModelSerializer):
     class Meta:
         model = Term
-        fields = ['id', 'name', 'start_date', 'end_date']
+        fields = ["id", "name", "start_date", "end_date"]
 
 
 class StudentGradesSerializer(serializers.ModelSerializer):
@@ -209,29 +276,76 @@ class StudentGradesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Result
         fields = [
-            "id", "student", "subject", "term", "marks", "grade",
-            "comments", "upload_date", "file_url"
+            "id",
+            "student",
+            "subject",
+            "term",
+            "marks",
+            "grade",
+            "comments",
+            "upload_date",
+            "file_url",
         ]
 
     def get_file_url(self, obj):
         return obj.file.url if obj.file else None
 
 
-
-
+# ----------------------
+# ATTENDANCE
+# ----------------------
 class StudentAttendanceSerializer(serializers.ModelSerializer):
-    status_display = serializers.CharField(source='get_status_display')
+    status_display = serializers.CharField(source="get_status_display")
 
     class Meta:
         model = Attendance
-        fields = ['id', 'date', 'status', 'status_display', 'recorded_by']
+        fields = ["id", "date", "status", "status_display", "recorded_by"]
 
 
+class AttendanceRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AttendanceRecord
+        fields = "__all__"
+        read_only_fields = ("created_at", "attendance_percent")
 
+    def validate_date(self, value):
+        if value > datetime.date.today():
+            raise serializers.ValidationError("Date cannot be in the future.")
+        return value
+
+
+# ----------------------
+# GRADES & FLAGS
+# ----------------------
+class GradeRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GradeRecord
+        fields = "__all__"
+        read_only_fields = ("created_at",)
+
+    def validate_grade(self, value):
+        if len(value) > 2:  # e.g. "A", "B+", "C-"
+            raise serializers.ValidationError(
+                "Grade must be a valid letter grade (e.g. A, B+)."
+            )
+        return value
+
+
+class StudentFlagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudentFlag
+        fields = "__all__"
+        read_only_fields = ("created_at",)
+
+
+# ----------------------
+# FEES & PAYMENTS
+# ----------------------
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = ['id', 'amount', 'date', 'method', 'transaction_id']
+        fields = "__all__"
+        read_only_fields = ("date",)
 
 
 class FeeSerializer(serializers.ModelSerializer):
@@ -241,7 +355,16 @@ class FeeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Fee
-        fields = ['id', 'student', 'term', 'total_fee', 'paid_amount', 'due_amount', 'due_date', 'payments']
+        fields = [
+            "id",
+            "student",
+            "term",
+            "total_fee",
+            "paid_amount",
+            "due_amount",
+            "due_date",
+            "payments",
+        ]
 
     def get_due_amount(self, obj):
         return obj.total_fee - obj.paid_amount
@@ -254,33 +377,79 @@ class FeePaymentSerializer(serializers.Serializer):
     transactionId = serializers.CharField()
 
 
+class FeeAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeeAccount
+        fields = "__all__"
 
+
+# ----------------------
+# COMMS & FEEDBACK
+# ----------------------
 class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
-        fields = ['id', 'parent', 'teacher', 'subject', 'message', 'created_at', 'read']
-        read_only_fields = ['parent', 'created_at', 'read']
-
+        fields = [
+            "id",
+            "parent",
+            "teacher",
+            "subject",
+            "message",
+            "created_at",
+            "read",
+        ]
+        read_only_fields = ["parent", "created_at", "read"]
 
 
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
-        fields = ['id', 'student', 'concern_type', 'message', 'request_callback',
-                  'schedule_meeting', 'status', 'response', 'timestamp']
-
+        fields = "__all__"
+        read_only_fields = ("timestamp",)
 
 
 class ConsentSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(source='student.user.username', read_only=True)
+    student_name = serializers.CharField(
+        source="student.user.username", read_only=True
+    )
 
     class Meta:
         model = Consent
-        fields = ['id', 'student', 'student_name', 'consent_type', 'status', 'created_at']
+        fields = ["id", "student", "student_name", "consent_type", "status", "created_at"]
 
 
-
+# ----------------------
+# EVENTS
+# ----------------------
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ['id', 'title', 'description', 'start', 'end', 'event_type', 'target_audience']
+        fields = "__all__"
+        read_only_fields = ("created_at",)
+
+
+# ----------------------
+# SMS CAMPAIGNS
+# ----------------------
+class SMSCampaignSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SMSCampaign
+        fields = "__all__"
+        read_only_fields = ("created_at",)
+
+
+# ----------------------
+# ADMIN TOOLS
+# ----------------------
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditLog
+        fields = "__all__"
+        read_only_fields = ("timestamp",)
+
+
+class USSDConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = USSDConfig
+        fields = "__all__"
+        read_only_fields = ("updated_at",)

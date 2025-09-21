@@ -19,6 +19,21 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv(".env")
 
+import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+AT_USERNAME = os.getenv("AT_USERNAME", "sandbox") 
+
+AT_SMS_API_KEY = os.getenv("AT_SMS_API_KEY")
+AT_USSD_API_KEY = os.getenv("AT_USSD_API_KEY")
+
+
+
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -49,11 +64,28 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     "rest_framework",
+    "rest_framework_simplejwt",
+    "django_celery_beat",
+    "django_celery_results",
     "core",
+<<<<<<< HEAD
     "rest_framework_simplejwt",
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+=======
+    'django_seed',
+>>>>>>> f20a918b82813f64a53335e8c9a29bebbda66318
 ]
+AUTH_USER_MODEL = "core.User"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+}
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -108,9 +140,15 @@ WSGI_APPLICATION = 'EdTech.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
+<<<<<<< HEAD
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',  
+=======
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+>>>>>>> f20a918b82813f64a53335e8c9a29bebbda66318
     }
 }
 
@@ -158,6 +196,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+<<<<<<< HEAD
 
 # Frontend reset page url
 FRONTEND_URL = "http://localhost:3000"
@@ -230,3 +269,5 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
+=======
+>>>>>>> f20a918b82813f64a53335e8c9a29bebbda66318

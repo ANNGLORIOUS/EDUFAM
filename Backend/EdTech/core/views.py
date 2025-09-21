@@ -1,508 +1,374 @@
+import logging
 from django.shortcuts import get_object_or_404
 from django.conf import settings
-from django.db.models import F
-from django.http import FileResponse
+from django.db.models import F, Q
+from django.http import FileResponse, HttpResponse
 from django.contrib.auth import authenticate, get_user_model, update_session_auth_hash
-from django.db.models import Q
-from rest_framework import generics, status, permissions
+from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.views.decorators.csrf import csrf_exempt
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-import logging
-from .models import ( User ,OTP, Student,PasswordResetToken,Result,Attendance, Message, Fee,Feedback, Payment, Consent, Event)
+from django.utils.timezone import now
 
+
+from .models import (
+    User, OTP, Student, Teacher, Parent, Attendance, Result, Message, Fee, Feedback,
+    Payment, Consent, Event, StudentFlag, AuditLog, USSDConfig, SMSCampaign
+)
 from .serializers import (
-    MyTokenObtainPairSerializer,
-    UserRegistrationSerializer, OTPRequestSerializer, OTPVerifySerializer,
-    GoogleAuthSerializer, PasswordChangeSerializer,
-    PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
-    ParentProfileSerializer, MessageSerializer, EventSerializer,StudentSummarySerializer,
-    FeeSerializer,PaymentSerializer, ConsentSerializer,FeePaymentSerializer,StudentGradesSerializer,StudentAttendanceSerializer,FeedbackSerializer)
-from .permissions import IsParent, IsParentOfStudent
-from .services import MockSMSService, EmailService ,PasswordResetService
+    MyTokenObtainPairSerializer, UserRegistrationSerializer, OTPRequestSerializer, OTPVerifySerializer,
+    GoogleAuthSerializer, PasswordChangeSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+    ParentProfileSerializer, MessageSerializer, EventSerializer, StudentSummarySerializer,
+    FeeSerializer, PaymentSerializer, ConsentSerializer, FeePaymentSerializer, StudentGradesSerializer,
+    StudentAttendanceSerializer, FeedbackSerializer, StudentSerializer, ParentSerializer, TeacherSerializer,
+    AttendanceSerializer, StudentFlagSerializer, AuditLogSerializer, USSDConfigSerializer, SMSCampaignSerializer
+)
+from .permissions import IsParent, IsParentOfStudent, IsTeacher, IsAdmin
+from .services import MockSMSService, EmailService, PasswordResetService
 from .tasks import send_payment_sms, send_message_notification
-
 
 logger = logging.getLogger(__name__)
 
+# ----------------------
+# UTILS
+# ----------------------
 def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token)
-    }
-# -----------------------
-# AUTHENTICATION VIEWS
-# -----------------------
+    return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
+# ----------------------
+# AUTHENTICATION
+# ----------------------
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
-
 
 class RegisterView(generics.CreateAPIView):
     queryset = get_user_model().objects.all()
     permission_classes = [AllowAny]
     serializer_class = UserRegistrationSerializer
 
-class LoginView(APIView):    
+class LoginView(APIView):
     permission_classes = [AllowAny]
-
     def post(self, request):
-        username = request.data.get("username")
-        password = request.data.get("password")
-
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(request, username=request.data.get("username"), password=request.data.get("password"))
         if not user:
-            return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        otp = OTP.objects.create(
-            phone_number=user.phone_number,
-            email=user.email,
-            otp_type="login"
-        )
-
+            return Response({"detail": "Invalid credentials"}, status=401)
+        otp = OTP.objects.create(phone_number=user.phone_number, email=user.email, otp_type="login")
         if user.phone_number:
             MockSMSService.send_sms(user.phone_number, f"Your OTP is {otp.code}")
         elif user.email:
-            EmailService.send_email(
-                subject="Your Login OTP",
-                message=f"Your OTP is {otp.code}",
-                recipient_email=user.email
-            )
+            EmailService.send_email("Login OTP", f"Your OTP is {otp.code}", user.email)
+        return Response({"detail": "OTP sent"})
 
-        return Response(
-            {"detail": "OTP sent. Please verify to complete login."},
-            status=status.HTTP_200_OK
-        )
-        
 class OTPRequestView(APIView):
     permission_classes = [AllowAny]
-
     def post(self, request):
         serializer = OTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        phone = serializer.validated_data.get("phone_number")
-        email = serializer.validated_data.get("email")
-        otp_type = serializer.validated_data.get("otp_type")
-
-        otp = OTP.objects.create(
-            phone_number=phone,
-            email=email,
-            otp_type=otp_type
-        )
-        if phone:
-            MockSMSService.send_otp(phone, otp.code, otp_type)
-        if email:
-            EmailService.send_otp_email(email, otp.code, otp_type)
-
-        return Response({"detail": "OTP sent successfully"}, status=200)
+        otp = OTP.objects.create(**serializer.validated_data)
+        if otp.phone_number:
+            MockSMSService.send_otp(otp.phone_number, otp.code, otp.otp_type)
+        if otp.email:
+            EmailService.send_otp_email(otp.email, otp.code, otp.otp_type)
+        return Response({"detail": "OTP sent"})
 
 class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
     serializer_class = OTPVerifySerializer
-
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         otp = serializer.validated_data["otp_instance"]
-        otp.is_used = True
-        otp.save()
-
-        user = User.objects.filter(phone_number=otp.phone_number).first() \
-            or User.objects.filter(email=otp.email).first()
-
+        otp.is_used = True; otp.save()
+        user = User.objects.filter(phone_number=otp.phone_number).first() or User.objects.filter(email=otp.email).first()
         if not user:
-            return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        if otp.phone_number:
-            user.is_phone_verified = True
-        if otp.email:
-            user.is_email_verified = True
+            return Response({"detail": "User not found"}, status=404)
+        if otp.phone_number: user.is_phone_verified = True
+        if otp.email: user.is_email_verified = True
         user.save()
-
-        refresh = RefreshToken.for_user(user)
-        return Response(
-            {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "phone_number": user.phone_number,
-                    "user_type": user.user_type,
-                },
-            },
-            status=status.HTTP_200_OK
-        )
-
+        return Response({**get_tokens_for_user(user), "user": {"id": user.id, "username": user.username, "role": user.role}})
 
 class GoogleAuthView(generics.GenericAPIView):
     serializer_class = GoogleAuthSerializer
     permission_classes = [AllowAny]
-
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        google_token = serializer.validated_data["token"]
-
+        serializer = self.get_serializer(data=request.data); serializer.is_valid(raise_exception=True)
         try:
-            idinfo = id_token.verify_oauth2_token(
-                google_token, google_requests.Request(), settings.GOOGLE_CLIENT_ID
-            )
-            email = idinfo.get("email")
-            if not email:
-                return Response(
-                    {"error": "Email not provided by Google"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            info = id_token.verify_oauth2_token(serializer.validated_data["token"], google_requests.Request(), settings.GOOGLE_CLIENT_ID)
+            email = info.get("email"); first, last = info.get("given_name", ""), info.get("family_name", "")
+            user, created = User.objects.get_or_create(email=email, defaults={"username": email.split("@")[0], "first_name": first, "last_name": last, "is_email_verified": True})
+            return Response({"message": "Google login successful", "is_new": created, "user": {"id": user.id, "email": user.email}, **get_tokens_for_user(user)})
+        except ValueError:
+            return Response({"error": "Invalid Google token"}, status=400)
 
-            first_name = idinfo.get("given_name", "")
-            last_name = idinfo.get("family_name", "")
-
-            user, created = User.objects.get_or_create(
-                email=email,
-                defaults={
-                    "username": email.split("@")[0],
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "is_active": True,
-                    "is_email_verified": True,
-                }
-            )
-
-            refresh = RefreshToken.for_user(user)
-            tokens = {
-                "refresh": str(refresh),
-                "access": str(refresh.access_token),
-            }
-
-            return Response(
-                {
-                    "message": "Google login successful",
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "email": user.email,
-                        "user_type": user.user_type,
-                        "first_name": user.first_name,
-                        "last_name": user.last_name,
-                        "is_new_user": created,
-                    },
-                    **tokens,
-                },
-                status=status.HTTP_200_OK
-            )
-
-        except ValueError as e:
-            return Response(
-                {"error": "Invalid Google token", "details": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
-        refresh_token = request.data.get("refresh")
-        if not refresh_token:
-            return Response({"detail": "Refresh token required."}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response(
-                {"detail": "Successfully logged out."},
-                status=status.HTTP_205_RESET_CONTENT
-            )
-        except Exception as e:
-            return Response(
-                {"detail": "Invalid or expired refresh token."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            RefreshToken(request.data.get("refresh")).blacklist()
+            return Response({"detail": "Logged out"}, status=205)
+        except Exception:
+            return Response({"detail": "Invalid refresh"}, status=400)
 
 class PasswordChangeView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
-        serializer = PasswordChangeSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        update_session_auth_hash(request, request.user)  
-        return Response({"detail": "Password changed successfully"}, status=status.HTTP_200_OK)
-
+        serializer = PasswordChangeSerializer(data=request.data, context={'request': request}); serializer.is_valid(raise_exception=True); serializer.save()
+        update_session_auth_hash(request, request.user)
+        return Response({"detail": "Password changed"})
 
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
-
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         if serializer.is_valid():
-            email = serializer.validated_data.get('email')
-
-            try:
-                user = User.objects.get(email=email)
-                PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
-
-                reset_token = PasswordResetToken.objects.create(user=user)
-
-                success = PasswordResetService.send_password_reset_email(
-                    user_email=user.email,
-                    token=reset_token.token,
-                    username=user.username
-                )
-
-                if success:
-                    logger.info(f"Password reset email sent to {email}")
-                else:
-                    logger.error(f"Failed to send reset email to {email}")
-
-            except User.DoesNotExist:
-                logger.info(f"Password reset requested for non-existent email: {email}")
-                pass
-
-            return Response({
-                "message": "If an account with that email exists, a reset link has been sent.",
-                "expires_in": 3600
-            })
-
-        return Response({
-            "error": "Invalid request data",
-            "details": serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            PasswordResetService.initiate(serializer.validated_data["email"])
+        return Response({"message": "If the email exists, a reset link has been sent."})
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
-
     def post(self, request):
-        serializer = PasswordResetConfirmSerializer(data=request.data)
-        if serializer.is_valid():
-            token = serializer.validated_data.get('token')
-            new_password = serializer.validated_data.get('new_password')
+        serializer = PasswordResetConfirmSerializer(data=request.data); serializer.is_valid(raise_exception=True)
+        PasswordResetService.confirm(serializer.validated_data["token"], serializer.validated_data["new_password"])
+        return Response({"message": "Password reset successful"})
 
-            try:
-                reset_token = PasswordResetToken.objects.get(token=token, is_used=False)
-
-                if not reset_token.is_valid():
-                    return Response({
-                        "error": "Reset link has expired. Please request a new one."
-                    }, status=status.HTTP_400_BAD_REQUEST)
-
-                user = reset_token.user
-                user.set_password(new_password)
-                user.save()
-
-                reset_token.is_used = True
-                reset_token.save()
-
-                logger.info(f"Password reset completed for user {user.username}")
-
-                tokens = get_tokens_for_user(user)
-
-                return Response({
-                    "message": "Password reset successful. You are now logged in.",
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "email": user.email,
-                    },
-                    **tokens
-                })
-
-            except PasswordResetToken.DoesNotExist:
-                return Response({
-                    "error": "Invalid or expired reset link"
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({
-            "error": "Invalid request data",
-            "details": serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
-
-# -----------------------
-# PARENT-SIDE VIEWS
-# -----------------------
-
-
+# ----------------------
+# PARENT VIEWS
+# ----------------------
 class ParentProfileView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = ParentProfileSerializer
-
-    def get_object(self):
-        return self.request.user
-
+    permission_classes = [IsAuthenticated, IsParent]
+    def get_object(self): return self.request.user
 
 class StudentSummaryView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = StudentSummarySerializer
-
-    def get_queryset(self):
-        return Student.objects.filter(parent=self.request.user)
-
+    permission_classes = [IsAuthenticated, IsParent]
+    def get_queryset(self): return Student.objects.filter(parent=self.request.user)
 
 class StudentGradesView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = StudentGradesSerializer
-
+    permission_classes = [IsAuthenticated, IsParent]
     def get_queryset(self):
-        student_id = self.request.query_params.get("studentId")
-        term = self.request.query_params.get("term")
-        queryset = Result.objects.filter(student__parent=self.request.user)
-
-        if student_id:
-            queryset = queryset.filter(student__id=student_id)
-
-        if term:
-            queryset = queryset.filter(term__name=term)
-
-        return queryset.select_related("student", "subject", "term", "uploaded_by")
-
+        qs = Result.objects.filter(student__parent=self.request.user)
+        sid, term = self.request.query_params.get("studentId"), self.request.query_params.get("term")
+        if sid: qs = qs.filter(student__id=sid)
+        if term: qs = qs.filter(term__name=term)
+        return qs.select_related("student", "subject", "term", "uploaded_by")
 
 class ResultDownloadView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, result_id, *args, **kwargs):
+    permission_classes = [IsAuthenticated, IsParent]
+    def get(self, request, result_id):
         result = get_object_or_404(Result, id=result_id, student__parent=request.user)
-        if not result.file:
-            return Response({"error": "No file available"}, status=status.HTTP_404_NOT_FOUND)
+        if not result.file: return Response({"error": "No file"}, status=404)
         return FileResponse(result.file.open(), as_attachment=True, filename=result.file.name)
 
-
 class StudentAttendanceView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = StudentAttendanceSerializer
-
+    permission_classes = [IsAuthenticated, IsParent]
     def get_queryset(self):
-        student_id = self.request.query_params.get("studentId")
-        term = self.request.query_params.get("term")
-        queryset = Attendance.objects.filter(student__id=student_id, student__parent=self.request.user)
-        if term:
-            term_obj = Result.objects.filter(student__id=student_id, term__name=term).first()
-            if term_obj:
-                queryset = queryset.filter(date__gte=term_obj.term.start_date,
-                                           date__lte=term_obj.term.end_date)
-        return queryset.order_by('date')
-
-
+        sid, term = self.request.query_params.get("studentId"), self.request.query_params.get("term")
+        qs = Attendance.objects.filter(student__id=sid, student__parent=self.request.user)
+        return qs.order_by("date")
 
 class StudentFeeView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = FeeSerializer
-
+    permission_classes = [IsAuthenticated, IsParent]
     def get_object(self):
-        student_id = self.request.query_params.get("studentId")
-        return get_object_or_404(Fee, student__id=student_id, student__parent=self.request.user)
-
+        return get_object_or_404(Fee, student__id=self.request.query_params.get("studentId"), student__parent=self.request.user)
 
 class FeePaymentView(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = FeePaymentSerializer
-
+    permission_classes = [IsAuthenticated, IsParent]
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        student_id = serializer.validated_data["studentId"]
-        amount = serializer.validated_data["amount"]
-        method = serializer.validated_data["paymentMethod"]
-        transaction_id = serializer.validated_data["transactionId"]
-
-        fee = get_object_or_404(Fee, student__id=student_id, student__parent=request.user)
-        fee.paid_amount = F('paid_amount') + amount
-        fee.save(update_fields=['paid_amount'])
-        fee.refresh_from_db()
-
-        payment = Payment.objects.create(
-            fee=fee,
-            amount=amount,
-            method=method,
-            transaction_id=transaction_id
-        )
-
-        return Response({
-            "status": "success",
-            "message": "Payment recorded successfully",
-            "newBalance": fee.total_fee - fee.paid_amount,
-            "payment": PaymentSerializer(payment).data
-        }, status=status.HTTP_201_CREATED)
-
+        s_id, amt, method, tx = request.data.get("studentId"), request.data.get("amount"), request.data.get("paymentMethod"), request.data.get("transactionId")
+        fee = get_object_or_404(Fee, student__id=s_id, student__parent=request.user)
+        fee.paid_amount = F("paid_amount") + amt; fee.save(update_fields=["paid_amount"]); fee.refresh_from_db()
+        payment = Payment.objects.create(fee=fee, amount=amt, method=method, transaction_id=tx)
+        return Response({"status": "success", "newBalance": fee.total_fee - fee.paid_amount, "payment": PaymentSerializer(payment).data}, status=201)
 
 class StudentPaymentHistoryView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = PaymentSerializer
-
+    permission_classes = [IsAuthenticated, IsParent]
     def get_queryset(self):
-        student_id = self.request.query_params.get("studentId")
-        fee = get_object_or_404(Fee, student__id=student_id, student__parent=self.request.user)
-        return Payment.objects.filter(fee=fee).order_by('-date')
-
-
+        fee = get_object_or_404(Fee, student__id=self.request.query_params.get("studentId"), student__parent=self.request.user)
+        return Payment.objects.filter(fee=fee).order_by("-date")
 
 class MessageListCreateView(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = MessageSerializer
-
-    def get_queryset(self):
-        return Message.objects.filter(parent=self.request.user).order_by('-created_at')
-
-    def perform_create(self, serializer):
-        serializer.save(parent=self.request.user)
-
+    permission_classes = [IsAuthenticated, IsParent]
+    def get_queryset(self): return Message.objects.filter(parent=self.request.user).order_by("-created_at")
+    def perform_create(self, serializer): serializer.save(parent=self.request.user)
 
 class FeedbackCreateView(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = FeedbackSerializer
-
-    def perform_create(self, serializer):
-        serializer.save(parent=self.request.user)
-
+    permission_classes = [IsAuthenticated, IsParent]
+    def perform_create(self, serializer): serializer.save(parent=self.request.user)
 
 class FeedbackListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = FeedbackSerializer
-
-    def get_queryset(self):
-        status_param = self.request.query_params.get("status")
-        queryset = Feedback.objects.filter(parent=self.request.user)
-        if status_param:
-            queryset = queryset.filter(status=status_param)
-        return queryset.order_by('-timestamp')
-
-
+    permission_classes = [IsAuthenticated, IsParent]
+    def get_queryset(self): return Feedback.objects.filter(parent=self.request.user).order_by("-timestamp")
 
 class ConsentListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = ConsentSerializer
-
-    def get_queryset(self):
-        return Consent.objects.filter(student__parent=self.request.user)
-
+    permission_classes = [IsAuthenticated, IsParent]
+    def get_queryset(self): return Consent.objects.filter(student__parent=self.request.user)
 
 class ConsentUpdateView(generics.UpdateAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = ConsentSerializer
+    permission_classes = [IsAuthenticated, IsParent]
     lookup_field = "id"
-
-    def get_queryset(self):
-        return Consent.objects.filter(student__parent=self.request.user)
-
+    def get_queryset(self): return Consent.objects.filter(student__parent=self.request.user)
 
 class EventListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = EventSerializer
-
+    permission_classes = [IsAuthenticated]
     def get_queryset(self):
-        queryset = Event.objects.filter(
-            Q(target_audience="all") | Q(target_audience="parents")
+        qs = Event.objects.filter(Q(target_audience="all") | Q(target_audience="parents"))
+        return qs.order_by("start")
+
+# ----------------------
+# ADMIN & TEACHER VIEWS
+# ----------------------
+class StudentListCreateView(generics.ListCreateAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
+    permission_classes = [IsAuthenticated, IsTeacher|IsAdmin]
+
+class TeacherListView(generics.ListCreateAPIView):
+    queryset = Teacher.objects.all()
+    serializer_class = TeacherSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+class ParentListView(generics.ListAPIView):
+    queryset = Parent.objects.select_related("user").all()
+    serializer_class = ParentSerializer
+    permission_classes = [IsAuthenticated, IsAdmin|IsTeacher]
+
+class AttendanceBulkUploadView(generics.CreateAPIView):
+    queryset = Attendance.objects.all()
+    serializer_class = AttendanceSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+class StudentFlagView(generics.CreateAPIView):
+    queryset = StudentFlag.objects.all()
+    serializer_class = StudentFlagSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+class FeedbackView(generics.ListAPIView):
+    queryset = Feedback.objects.all()
+    serializer_class = FeedbackSerializer
+    permission_classes = [IsAuthenticated, IsAdmin|IsTeacher]
+
+class SMSCampaignView(generics.ListCreateAPIView):
+    queryset = SMSCampaign.objects.all()
+    serializer_class = SMSCampaignSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+class AuditLogView(generics.ListAPIView):
+    queryset = AuditLog.objects.all()
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+class USSDConfigView(generics.CreateAPIView):
+    queryset = USSDConfig.objects.all()
+    serializer_class = USSDConfigSerializer
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+@csrf_exempt
+def ussd_callback(request):
+    # ✅ Optional API Key check
+    api_key = request.headers.get("X-API-Key")
+    if api_key and api_key != getattr(settings, "AT_USSD_API_KEY", None):
+        return HttpResponse("END Unauthorized", content_type="text/plain")
+
+    session_id = request.POST.get("sessionId")
+    phone_number = request.POST.get("phoneNumber")
+    text = request.POST.get("text", "")
+
+    # ✅ Get dynamic menus
+    config = USSDConfig.objects.latest("updated_at")
+    menus = config.menu_json.get("menus", {})
+
+    # ✅ Find parent
+    try:
+        parent = User.objects.get(phone_number=phone_number, user_type="parent")
+    except User.DoesNotExist:
+        return HttpResponse("END Your number is not registered as a parent. Please contact the school.", content_type="text/plain")
+
+    # ✅ Track navigation path
+    steps = text.split("*") if text else []
+    node, current = None, menus
+    for step in steps:
+        if step in current:
+            node = current[step]
+            current = node.get("children", {})
+        else:
+            return HttpResponse("END Invalid choice", content_type="text/plain")
+
+    # ✅ Handle school-specific actions
+    if node and node.get("action") == "student_summary":
+        students = parent.students.all()
+        if not students:
+            return HttpResponse("END No students linked to your account.", content_type="text/plain")
+        data = StudentSummarySerializer(students, many=True).data
+        msg = "CON Student Summary:\n" + "\n".join(
+            [f"- {s['name']} (Class {s['student_class']})" for s in data]
         )
+        return HttpResponse(msg, content_type="text/plain")
 
-        start_date = self.request.query_params.get("start")
-        end_date = self.request.query_params.get("end")
-        if start_date and end_date:
-            queryset = queryset.filter(start__gte=start_date, end__lte=end_date)
+    elif node and node.get("action") == "fees":
+        student = parent.students.first()
+        if not student:
+            return HttpResponse("END No students linked to your account.", content_type="text/plain")
+        try:
+            fee = Fee.objects.get(student=student)
+            fee_data = FeeSerializer(fee).data
+            msg = (
+                f"END Fees for {student.name}:\n"
+                f"Total: {fee_data['total_fee']}\n"
+                f"Paid: {fee_data['paid_amount']}\n"
+                f"Balance: {fee_data['due_amount']}"
+            )
+            return HttpResponse(msg, content_type="text/plain")
+        except Fee.DoesNotExist:
+            return HttpResponse("END No fee records found.", content_type="text/plain")
 
-        return queryset.order_by("start")
+    elif node and node.get("action") == "consents":
+        consents = Consent.objects.filter(student__parent=parent)
+        if not consents:
+            return HttpResponse("END No consent records found.", content_type="text/plain")
+        data = ConsentSerializer(consents, many=True).data
+        msg = "CON Consents:\n" + "\n".join(
+            [f"- {c['consent_type']}: {c['status']}" for c in data]
+        )
+        return HttpResponse(msg, content_type="text/plain")
+
+    elif node and node.get("action") == "events":
+        events = Event.objects.filter(date__gte=now().date()).order_by("date")[:5]
+        if not events:
+            return HttpResponse("END No upcoming events.", content_type="text/plain")
+        data = EventSerializer(events, many=True).data
+        msg = "END Upcoming Events:\n" + "\n".join(
+            [f"- {e['title']} ({e['date']})" for e in data]
+        )
+        return HttpResponse(msg, content_type="text/plain")
+
+    # ✅ Handle plain END nodes
+    if node and node.get("type") == "END":
+        return HttpResponse(f"END {node.get('message', 'Goodbye')}", content_type="text/plain")
+
+    # ✅ Render generic menu text
+    if node:
+        options = "\n".join([f"{k}. {v['text']}" for k, v in current.items()])
+        return HttpResponse(f"CON {node['text']}\n{options}", content_type="text/plain")
+
+    # Default: show root menu
+    options = "\n".join([f"{k}. {v['text']}" for k, v in menus.items()])
+    return HttpResponse(f"CON Welcome to EDUFAM\n{options}", content_type="text/plain")
