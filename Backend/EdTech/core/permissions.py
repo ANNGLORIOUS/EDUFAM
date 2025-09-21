@@ -1,14 +1,13 @@
 from rest_framework import permissions
-from core.models import Student  
+from core.models import Student
+
 
 class IsParent(permissions.BasePermission):
     message = "You must be a parent to access this resource."
 
     def has_permission(self, request, view):
-        return (
-            request.user 
-            and request.user.is_authenticated 
-            and getattr(request.user, "user_type", None) == "parent"
+        return bool(
+            request.user and request.user.is_authenticated and request.user.role == "parent"
         )
 
 
@@ -19,14 +18,14 @@ class IsParentOfStudent(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        if request.user.user_type != "parent":
+        if request.user.role != "parent":
             return False
 
         if isinstance(obj, Student):
-            return obj.parent_id == request.user.id
+            return request.user in obj.parents.all()
 
         if hasattr(obj, "student"):
-            return obj.student.parent_id == request.user.id
+            return request.user in obj.student.parents.all()
 
         return False
 
@@ -35,10 +34,8 @@ class IsTeacher(permissions.BasePermission):
     message = "You must be a teacher to access this resource."
 
     def has_permission(self, request, view):
-        return (
-            request.user 
-            and request.user.is_authenticated 
-            and getattr(request.user, "user_type", None) == "teacher"
+        return bool(
+            request.user and request.user.is_authenticated and request.user.role == "teacher"
         )
 
 
@@ -46,10 +43,8 @@ class IsAdmin(permissions.BasePermission):
     message = "You must be an admin to access this resource."
 
     def has_permission(self, request, view):
-        return (
-            request.user 
-            and request.user.is_authenticated 
-            and getattr(request.user, "user_type", None) == "admin"
+        return bool(
+            request.user and request.user.is_authenticated and request.user.role == "admin"
         )
 
 
@@ -57,10 +52,10 @@ class IsTeacherOrAdmin(permissions.BasePermission):
     message = "You must be a teacher or admin to access this resource."
 
     def has_permission(self, request, view):
-        return (
-            request.user 
-            and request.user.is_authenticated 
-            and getattr(request.user, "user_type", None) in ["teacher", "admin"]
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.role in ["teacher", "admin"]
         )
 
 
@@ -80,7 +75,7 @@ class CanAccessStudent(permissions.BasePermission):
         if not user or not user.is_authenticated:
             return False
 
-        if user.user_type == "admin":
+        if user.role == "admin":
             return True
 
         if isinstance(obj, Student):
@@ -90,11 +85,12 @@ class CanAccessStudent(permissions.BasePermission):
         else:
             return False
 
-        if user.user_type == "parent":
-            return student.parent_id == user.id
+        if user.role == "parent":
+            return user in student.parents.all()
 
-        if user.user_type == "teacher":
-            return True  
+        if user.role == "teacher":
+            return True
+
         return False
 
 
@@ -117,10 +113,10 @@ class CanModifyConsent(permissions.BasePermission):
         if not user or not user.is_authenticated:
             return False
 
-        if user.user_type == "admin" and request.method in permissions.SAFE_METHODS:
+        if user.role == "admin" and request.method in permissions.SAFE_METHODS:
             return True
 
-        if user.user_type == "parent":
-            return obj.student.parent_id == user.id
+        if user.role == "parent":
+            return user in obj.student.parents.all()
 
         return False
