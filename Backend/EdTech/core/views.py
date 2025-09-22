@@ -18,7 +18,7 @@ from django.utils.timezone import now
 
 
 from .models import (
-    User, OTP, Student, Teacher, Parent, Attendance, Result, Message, Fee, Feedback,
+    User, OTP, Student, Teacher, Parent, AttendanceRecord, GradeRecord, Message, Fee, Feedback,
     Payment, Consent, Event, StudentFlag, AuditLog, USSDConfig, SMSCampaign
 )
 from .serializers import (
@@ -27,7 +27,7 @@ from .serializers import (
     ParentProfileSerializer, MessageSerializer, EventSerializer, StudentSummarySerializer,
     FeeSerializer, PaymentSerializer, ConsentSerializer, FeePaymentSerializer, StudentGradesSerializer,
     StudentAttendanceSerializer, FeedbackSerializer, StudentSerializer, ParentSerializer, TeacherSerializer,
-    AttendanceSerializer, StudentFlagSerializer, AuditLogSerializer, USSDConfigSerializer, SMSCampaignSerializer
+    AttendanceRecordSerializer, StudentFlagSerializer, AuditLogSerializer, USSDConfigSerializer, SMSCampaignSerializer
 )
 from .permissions import IsParent, IsParentOfStudent, IsTeacher, IsAdmin
 from .services import MockSMSService, EmailService, PasswordResetService
@@ -155,7 +155,7 @@ class StudentGradesView(generics.ListAPIView):
     serializer_class = StudentGradesSerializer
     permission_classes = [IsAuthenticated, IsParent]
     def get_queryset(self):
-        qs = Result.objects.filter(student__parent=self.request.user)
+        qs = GradeRecord.objects.filter(student__parent=self.request.user)
         sid, term = self.request.query_params.get("studentId"), self.request.query_params.get("term")
         if sid: qs = qs.filter(student__id=sid)
         if term: qs = qs.filter(term__name=term)
@@ -164,7 +164,7 @@ class StudentGradesView(generics.ListAPIView):
 class ResultDownloadView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsParent]
     def get(self, request, result_id):
-        result = get_object_or_404(Result, id=result_id, student__parent=request.user)
+        result = get_object_or_404(GradeRecord, id=result_id, student__parent=request.user)
         if not result.file: return Response({"error": "No file"}, status=404)
         return FileResponse(result.file.open(), as_attachment=True, filename=result.file.name)
 
@@ -173,7 +173,7 @@ class StudentAttendanceView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsParent]
     def get_queryset(self):
         sid, term = self.request.query_params.get("studentId"), self.request.query_params.get("term")
-        qs = Attendance.objects.filter(student__id=sid, student__parent=self.request.user)
+        qs = AttendanceRecord.objects.filter(student__id=sid, student__parent=self.request.user)
         return qs.order_by("date")
 
 class StudentFeeView(generics.RetrieveAPIView):
@@ -181,6 +181,29 @@ class StudentFeeView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsParent]
     def get_object(self):
         return get_object_or_404(Fee, student__id=self.request.query_params.get("studentId"), student__parent=self.request.user)
+class GradeBulkUploadView(generics.CreateAPIView):
+    """
+    Upload multiple grade records in bulk.
+    Expected payload: list of grade objects.
+    """
+    queryset = GradeRecord.objects.all()
+    serializer_class = StudentGradesSerializer  # or create a dedicated GradeRecordSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def create(self, request, *args, **kwargs):
+        # Handle bulk insert
+        data = request.data if isinstance(request.data, list) else [request.data]
+        serializer = self.get_serializer(data=data, many=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=201)
+
+class EventView(generics.ListCreateAPIView):
+    queryset = Event.objects.all().order_by("-start") 
+    serializer_class = EventSerializer
+    permission_classes = [IsAuthenticated]  
+
+
 
 class FeePaymentView(generics.CreateAPIView):
     serializer_class = FeePaymentSerializer
@@ -241,10 +264,14 @@ class StudentListCreateView(generics.ListCreateAPIView):
     serializer_class = StudentSerializer
     permission_classes = [IsAuthenticated, IsTeacher|IsAdmin]
 
-class TeacherListView(generics.ListCreateAPIView):
+class TeacherView(generics.ListCreateAPIView):
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+
+# class TeacherView(generics.ListCreateAPIView):
+#     queryset = Teacher.objects.all()
+#     serializer_class = TeacherSerializer
 
 class ParentListView(generics.ListAPIView):
     queryset = Parent.objects.select_related("user").all()
@@ -252,14 +279,36 @@ class ParentListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsAdmin|IsTeacher]
 
 class AttendanceBulkUploadView(generics.CreateAPIView):
-    queryset = Attendance.objects.all()
-    serializer_class = AttendanceSerializer
+    queryset = AttendanceRecord.objects.all()
+    serializer_class = AttendanceRecordSerializer
     permission_classes = [IsAuthenticated, IsTeacher]
+
+class AttendanceReportView(APIView):
+    def get(self, request, *args, **kwargs):
+        # Example: group attendance by student
+        attendance_data = AttendanceRecord.objects.select_related("student").all()
+
+        report = {}
+        for record in attendance_data:
+            student_name = record.student.name
+            if student_name not in report:
+                report[student_name] = {"present": 0, "absent": 0}
+            if record.status.lower() == "present":
+                report[student_name]["present"] += 1
+            else:
+                report[student_name]["absent"] += 1
+
+        return Response(report)
 
 class StudentFlagView(generics.CreateAPIView):
     queryset = StudentFlag.objects.all()
     serializer_class = StudentFlagSerializer
     permission_classes = [IsAuthenticated, IsTeacher]
+
+
+class StudentDetailView(generics.RetrieveAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer
 
 class FeedbackView(generics.ListAPIView):
     queryset = Feedback.objects.all()

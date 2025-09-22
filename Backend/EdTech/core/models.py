@@ -155,7 +155,7 @@ class Term(models.Model):
         return self.name
 
 
-class Result(models.Model):
+class GradeRecord(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='results')
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='results')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='results')
@@ -173,7 +173,7 @@ class Result(models.Model):
 # ==============================
 # Attendance
 # ==============================
-class Attendance(models.Model):
+class AttendanceRecord(models.Model):
     STATUS_CHOICES = (("present", "Present"), ("absent", "Absent"), ("late", "Late"), ("excused", "Excused"))
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendances')
     date = models.DateField()

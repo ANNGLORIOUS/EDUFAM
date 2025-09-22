@@ -68,13 +68,9 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
     "core",
-<<<<<<< HEAD
-    "rest_framework_simplejwt",
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
-=======
     'django_seed',
->>>>>>> f20a918b82813f64a53335e8c9a29bebbda66318
 ]
 AUTH_USER_MODEL = "core.User"
 
@@ -140,15 +136,10 @@ WSGI_APPLICATION = 'EdTech.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-<<<<<<< HEAD
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',  
-=======
+  
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
->>>>>>> f20a918b82813f64a53335e8c9a29bebbda66318
     }
 }
 
@@ -196,7 +187,6 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-<<<<<<< HEAD
 
 # Frontend reset page url
 FRONTEND_URL = "http://localhost:3000"
@@ -269,5 +259,3 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer",
     "SLIDING_TOKEN_REFRESH_SERIALIZER": "rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer",
 }
-=======
->>>>>>> f20a918b82813f64a53335e8c9a29bebbda66318

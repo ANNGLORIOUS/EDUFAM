@@ -16,8 +16,6 @@ from .models import (
     Parent,
     Subject,
     Term,
-    Result,
-    Attendance,
     AttendanceRecord,
     GradeRecord,
     StudentFlag,
@@ -52,32 +50,24 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(
-        required=True, validators=[UniqueValidator(queryset=User.objects.all())]
-    )
-    password = serializers.CharField(
-        write_only=True, required=True, validators=[validate_password]
-    )
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
     password2 = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
-        fields = (
-            "username",
-            "email",
-            "password",
-            "password2",
-            "first_name",
-            "last_name",
-            "phone_number",
-            "role",
-        )
+        fields = ["id", "username", "email", "role", "password", "password2"]
 
-    def validate(self, attrs):
-        if attrs["password"] != attrs["password2"]:
-            raise serializers.ValidationError({"password": "Passwords don't match."})
-        return attrs
+    def validate(self, data):
+        if data["password"] != data["password2"]:
+            raise serializers.ValidationError({"password": "Passwords do not match."})
+
+        try:
+            validate_password(data["password"])
+        except ValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
+
+        return data
 
     def create(self, validated_data):
         validated_data.pop("password2")
@@ -86,7 +76,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
-
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -237,6 +226,10 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = "__all__"
 
+class StudentSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = ["id", "student_id", "name", "student_class", "status"]
 
 class ParentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
@@ -274,7 +267,7 @@ class StudentGradesSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
 
     class Meta:
-        model = Result
+        model = GradeRecord
         fields = [
             "id",
             "student",
@@ -298,7 +291,7 @@ class StudentAttendanceSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display")
 
     class Meta:
-        model = Attendance
+        model = AttendanceRecord
         fields = ["id", "date", "status", "status_display", "recorded_by"]
 
 

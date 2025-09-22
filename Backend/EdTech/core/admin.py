@@ -17,8 +17,7 @@ from .models import (
     AuditLog,
     USSDConfig,
 )
-from .services.sms_service import send_sms
-
+# from core.services.sms_service import send_sms
 
 
 # ----------------------
@@ -64,9 +63,9 @@ class OTPAdmin(admin.ModelAdmin):
 # ----------------------
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ("id", "student_id", "first_name", "last_name", "classroom", "grade", "status")
-    search_fields = ("first_name", "last_name", "student_id", "parent_email", "classroom")
-    list_filter = ("status", "grade", "classroom")
+    list_display = ("id", "student_id", "first_name", "last_name", "status")
+    search_fields = ("first_name", "last_name", "student_id", "parents__user__email")
+    list_filter = ("status",)
     filter_horizontal = ("parents",)
 
 
@@ -75,8 +74,8 @@ class StudentAdmin(admin.ModelAdmin):
 # ----------------------
 @admin.register(Parent)
 class ParentAdmin(admin.ModelAdmin):
-    list_display = ("user", "phone_number", "occupation", "address")
-    search_fields = ("user__username", "user__email", "phone_number", "occupation")
+    list_display = ("user", "occupation", "address")
+    search_fields = ("user__username", "user__email")
 
 
 # ----------------------
@@ -103,7 +102,7 @@ class AttendanceAdmin(admin.ModelAdmin):
 # ----------------------
 @admin.register(GradeRecord)
 class GradeAdmin(admin.ModelAdmin):
-    list_display = ("student", "subject", "term", "grade", "recorded_by", "created_at")
+    list_display = ("student", "subject", "term", "grade")
     list_filter = ("term", "subject")
     search_fields = ("student__first_name", "student__last_name", "student__student_id", "subject")
 
@@ -123,9 +122,9 @@ class StudentFlagAdmin(admin.ModelAdmin):
 # ----------------------
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ("title", "date", "start_time", "end_time", "created_by")
+    list_display = ("title", "start", "end", "start_time", "end_time", "created_by")
     search_fields = ("title", "description")
-    list_filter = ("date",)
+    list_filter = ("start", "end", "event_type", "target_audience")
 
 
 # ----------------------
@@ -150,9 +149,9 @@ class PaymentAdmin(admin.ModelAdmin):
 # ----------------------
 @admin.register(Feedback)
 class FeedbackAdmin(admin.ModelAdmin):
-    list_display = ("student", "parent_name", "parent_email", "concern_type", "status", "timestamp")
+    list_display = ("student", "concern_type", "status", "timestamp")
     list_filter = ("status", "concern_type")
-    search_fields = ("parent_email", "parent_name", "message")
+    search_fields = ("student__first_name", "student__last_name", "message")
 
 
 # ----------------------
@@ -185,9 +184,9 @@ class SMSCampaignAdmin(admin.ModelAdmin):
 
             for student in students:
                 for parent in student.parents.all():
-                    if hasattr(parent, "parent_profile") and parent.parent_profile.phone_number:
+                    if hasattr(parent, "phone_number") and parent.phone_number:
                         try:
-                            send_sms(parent.parent_profile.phone_number, campaign.message)
+                            # send_sms(parent.phone_number, campaign.message)
                             sent += 1
                         except Exception:
                             failed += 1
