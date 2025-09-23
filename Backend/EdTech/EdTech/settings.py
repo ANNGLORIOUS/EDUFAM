@@ -64,12 +64,14 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'clerk_django.middlewares.clerk.ClerkAuthMiddleware',
 ]
 
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'core.clerk_auth.ClerkJWTAuthentication',
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -80,6 +82,13 @@ REST_FRAMEWORK = {
 ROOT_URLCONF = 'EdTech.urls'
 AUTH_USER_MODEL = 'core.User'
 CORS_ALLOW_ALL_ORIGINS = True  
+
+#clerk settings
+
+CLERK_SECRET_KEY =os.getenv('CLERK_SECRET_KEY')
+CLERK_JWT_AUDIENCE =None
+CLERK_PEM_PUBLIC_KEY=os.getenv('CLERK_PEM_PUBLIC_KEY')
+ALLOWED_PARTIES = ["http://localhost:5173"]
 
 # Google OAuth settings
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')

@@ -1,0 +1,247 @@
+/* Force green background for parent dashboard sidebar, override global sidebar */
+.parent-dashboard-row .sidebar {
+  background: #43cea2 !important;
+}
+/* ParentDashboard.css */
+body{
+  margin-top: auto;
+}
+/* Child Profile Styles */
+.attendance-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 8px solid #28a745;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.percentage h3 {
+  margin: 0;
+  color: #28a745;
+}
+
+/* Messages Styles */
+.messages-container,
+.chat-container {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.message {
+  background-color: white;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.message.text-end {
+  background-color: #007bff;
+  color: white;
+}
+
+.message.text-end .text-muted {
+  color: rgba(255,255,255,0.8) !important;
+}
+
+/* Calendar Styles */
+.calendar-event {
+  transition: all 0.3s ease;
+}
+
+.calendar-event:hover {
+  transform: translateX(5px);
+}
+
+/* Fee Status Styles */
+.fee-status-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.fee-status-card .card-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.fee-status-card h6 {
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.fee-status-card h4 {
+  font-weight: 700;
+}
+
+/* Feedback Form Styles */
+.feedback-form {
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Custom Grade Badge Styles */
+.custom-grade-badge {
+  background-color: transparent !important;
+  color: #1e0a3c !important;
+  font-weight: 600;
+  border: 1px solid #1e0a3c;
+}
+
+.grade-icon {
+  vertical-align: middle;
+}
+
+/* Chat with Teacher Button Styles */
+.chat-teacher-btn {
+  background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 30px !important;
+  font-weight: 600;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(30,10,60,0.10);
+  transition: background 0.2s, box-shadow 0.2s;
+  padding: 0.7rem 1.5rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-teacher-btn:hover, .chat-teacher-btn:focus {
+  background: linear-gradient(90deg, #185a9d 0%, #43cea2 100%) !important;
+  box-shadow: 0 4px 16px rgba(30,10,60,0.15);
+  color: #fff !important;
+  text-decoration: none;
+}
+
+/* Shared Modern Action Button Styles */
+.modern-action-btn {
+  background: linear-gradient(90deg, #1e0a3c 0%, #6c63ff 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 20px !important;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 0.6rem 1.4rem !important;
+  box-shadow: 0 2px 8px rgba(30,10,60,0.08);
+  transition: all 0.2s;
+  font-size: 1.08rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-action-btn:hover, .modern-action-btn:focus {
+  background: linear-gradient(90deg, #6c63ff 0%, #1e0a3c 100%) !important;
+  color: #fff !important;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(30,10,60,0.13);
+}
+
+/* Remove padding and border for Recent Notifications */
+.card.mb-4[style] {
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.card.mb-4 .list-group-item {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  border-bottom: 1px solid #eee;
+}
+
+.card.mb-4 .list-group-item:last-child {
+  border-bottom: none;
+}
+
+/* Set all p tags to have a grey font color */
+p {
+  color: #6c757d !important;
+}
+
+/* Ensure navbar is above, dashboard/sidebar below */
+.navbar {
+  z-index: 1050;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.parent-dashboard-row {
+  margin-top: 100px !important;
+  min-height: calc(100vh - 100px - 80px); /* 100px navbar, 80px footer est. */
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  height: 100%;
+  min-height: 0;
+  max-height: calc(100vh - 100px - 80px); /* stop at footer */
+  background: #43cea2;
+  border-right: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-bottom: 40px;
+  overflow-y: auto;
+}
+
+.sidebar {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 2;
+}
+
+.parent-dashboard-content {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* If you have a dashboard tab section, ensure it is not hidden */
+.dashboard-tab-section {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .attendance-circle {
+    width: 100px;
+    height: 100px;
+    border-width: 6px;
+  }
+  
+  .messages-container,
+  .chat-container {
+    height: 250px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .attendance-circle {
+    width: 100px;
+    height: 100px;
+    border-width: 6px;
+  }
+  
+  .messages-container,
+  .chat-container {
+    height: 250px !important;
+  }
+}

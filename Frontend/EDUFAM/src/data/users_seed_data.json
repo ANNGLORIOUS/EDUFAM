@@ -1,0 +1,154 @@
+{
+  "users_seed": [
+    {
+      "id": 1,
+      "type": "parent",
+      "name": "Jane Doe Parent",
+      "email": "janedoe.parent@email.com",
+      "children": ["12A"],
+      "status": "approved",
+      "dateAdded": "2025-01-10",
+      "lastLogin": "2025-09-17"
+    },
+  {
+    "id": 2,
+    "type": "student",
+    "name": "Jane Doe",
+    "studentId": "12A",
+    "class": "Class 1",
+    "parentId": 1,
+    "status": "active",
+    "dateAdded": "2025-01-10",
+    "fee": {
+      "totalFee": 30000,
+      "paidAmount": 25000,
+      "balance": 5000,
+      "dueDate": "2025-09-30",
+      "status": "pending",
+      "paymentDate": null
+    },
+    "lastLogin": "2025-09-15"
+  },
+  {
+    "id": 3,
+    "type": "teacher",
+    "name": "Mr. Smith",
+    "email": "mr.smith@email.com",
+    "subject": "Mathematics",
+    "class": "Class 1",
+    "status": "approved",
+    "dateAdded": "2025-01-05",
+    "lastLogin": "2025-09-18"
+  },
+  {
+    "id": 4,
+    "type": "parent",
+    "name": "John Doe Parent",
+    "email": "johndoe.parent@email.com",
+    "children": ["13B"],
+    "status": "pending",
+    "dateAdded": "2025-01-12",
+    "lastLogin": "Never"
+  },
+  {
+    "id": 5,
+    "type": "student",
+    "name": "John Doe",
+    "studentId": "13B",
+    "class": "Class 2",
+    "parentId": 4,
+    "status": "inactive",
+    "dateAdded": "2025-01-12",
+    "fee": {
+      "totalFee": 30000,
+      "paidAmount": 30000,
+      "balance": 0,
+      "dueDate": "2025-09-30",
+      "status": "paid",
+      "paymentDate": "2025-09-10"
+    },
+    "lastLogin": "2025-09-15"
+  },
+  {
+    "id": 6,
+    "type": "teacher",
+    "name": "Ms. Johnson",
+    "email": "ms.johnson@email.com",
+    "subject": "English",
+    "class": "Class 2",
+    "status": "approved",
+    "dateAdded": "2025-01-06",
+    "lastLogin": "2025-09-18"
+  },
+  {
+    "id": 7,
+    "type": "parent",
+    "name": "Sarah Wilson Parent",
+    "email": "sarahwilson.parent@email.com",
+    "children": ["14C"],
+    "status": "approved",
+    "dateAdded": "2025-01-15",
+    "lastLogin": "2025-09-18"
+  },
+  {
+    "id": 8,
+    "type": "student",
+    "name": "Sarah Wilson",
+    "studentId": "14C",
+    "class": "Class 3",
+    "parentId": 7,
+    "status": "active",
+    "dateAdded": "2025-01-15",
+    "fee": {
+      "totalFee": 30000,
+      "paidAmount": 0,
+      "balance": 30000,
+      "dueDate": "2025-09-30",
+      "status": "overdue",
+      "paymentDate": null
+    },
+    "lastLogin": "2025-09-15"
+  },
+  {
+    "id": 9,
+    "type": "teacher",
+    "name": "David Brown",
+    "email": "david.brown@email.com",
+    "subject": "Science",
+    "class": "Class 3",
+    "status": "pending",
+    "dateAdded": "2025-01-07",
+    "lastLogin": "2025-09-18"
+  }
+ ],
+"pending_accounts_seed": [
+  {
+    "id": 101,
+    "type": "parent",
+    "name": "Pending Parent Example",
+    "email": "pending.parent@email.com",
+    "children": ["15D"],
+    "status": "pending",
+    "dateAdded": "2025-09-20"
+  },
+  {
+    "id": 102,
+    "type": "teacher",
+    "name": "Pending Teacher Example",
+    "email": "pending.teacher@email.com",
+    "subject": "Science",
+    "class": "Class 2",
+    "status": "pending",
+    "dateAdded": "2025-09-21"
+  },
+  {
+    "id": 103,
+    "type": "student",
+    "name": "Pending Student Example",
+    "studentId": "15D",
+    "class": "Class 1",
+    "status": "pending",
+    "dateAdded": "2025-09-22"
+  }
+  ]
+}
