@@ -117,10 +117,18 @@ class PasswordResetToken(models.Model):
 class Class(models.Model):
     name = models.CharField(max_length=50)
     academic_year = models.CharField(max_length=10)
-    teachers = models.ManyToManyField(User, limit_choices_to={'role': 'teacher'}, related_name='classes')
+    teacher = models.OneToOneField(
+        'Teacher',  # link directly to Teacher model
+        on_delete=models.CASCADE,
+        related_name="class_assigned",
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return f"{self.name} ({self.academic_year})"
+
+
 
 
 class Student(models.Model):
@@ -276,13 +284,13 @@ class Feedback(models.Model):
 
 
 class Message(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="messages")
     parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
     teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name="teacher_messages")
     subject = models.CharField(max_length=255)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
-
 
 # ==============================
 # Student Flags & Consent
