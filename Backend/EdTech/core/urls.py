@@ -69,7 +69,7 @@ urlpatterns = [
     # Finance Endpoints
     # ------------------
     # path("fees/<int:pk>/", views.FeeAccountView.as_view(), name="fee-account"),
-    path("FeePayment/", views.FeePaymentView.as_view(), name="FeePayment"),
+    # path("FeePayment/", views.FeePaymentView.as_view(), name="FeePayment"),
 
     # ------------------
     # Feedback & Campaigns

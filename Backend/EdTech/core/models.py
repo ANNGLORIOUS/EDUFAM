@@ -44,8 +44,14 @@ class Parent(models.Model):
         return f"Parent: {self.user.get_full_name()}"
 
 
+# FIX: Update the Teacher-User relationship in Teacher model
 class Teacher(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        limit_choices_to={"role": "teacher"},  # Add this
+        related_name="teacher_profile"  # Add this
+    )
     subject = models.CharField(max_length=100, blank=True)
 
     def __str__(self):
@@ -114,13 +120,14 @@ class PasswordResetToken(models.Model):
 # ==============================
 # Academic Models
 # ==============================
+# FIX: Change OneToOne to ForeignKey
 class Class(models.Model):
     name = models.CharField(max_length=50)
     academic_year = models.CharField(max_length=10)
-    teacher = models.OneToOneField(
-        'Teacher',  # link directly to Teacher model
-        on_delete=models.CASCADE,
-        related_name="class_assigned",
+    teacher = models.ForeignKey(  # Changed from OneToOneField
+        'Teacher',
+        on_delete=models.SET_NULL,
+        related_name="classes",  # Changed from class_assigned
         null=True,
         blank=True,
     )
@@ -142,9 +149,12 @@ class Student(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def name(self):
+        return f"{self.first_name} {self.last_name}"
+    
     def __str__(self):
-        return f"{self.student_id} - {self.first_name} {self.last_name}"
-
+        return f"{self.student_id} - {self.name}"
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)
@@ -224,6 +234,10 @@ class Event(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, limit_choices_to={"role": "teacher"})
     created_at = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def date(self):
+        return self.start.date()
+    
     def __str__(self):
         return self.title
 
@@ -231,12 +245,17 @@ class Event(models.Model):
 # ==============================
 # Fees & Payments
 # ==============================
+# FIX: Update Fee model to use FeeAccount properly
 class Fee(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='fees')
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='fees')
     total_fee = models.DecimalField(max_digits=10, decimal_places=2)
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     due_date = models.DateField()
+    
+    @property
+    def due_amount(self):
+        return self.total_fee - self.paid_amount
 
     def __str__(self):
         return f"{self.student} - {self.term}"
@@ -248,23 +267,46 @@ class FeeAccount(models.Model):
     currency = models.CharField(max_length=8, default="KES")
     next_payment_due = models.DateField(null=True, blank=True)
 
-    @property
-    def due_amount(self):
-        return self.balance
-
+    def update_balance(self):
+        total_fees = Fee.objects.filter(student=self.student).aggregate(
+            total=models.Sum('total_fee')
+        )['total'] or 0
+        
+        total_payments = Payment.objects.filter(fee__student=self.student).aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        self.balance = total_fees - total_payments
+        self.save()
     def __str__(self):
-        return f"{self.student} - Balance: {self.balance}"
+        return f"FeeAccount({self.student}, Balance: {self.balance} {self.currency})"
 
-
+# FIX: Update Payment model
+# In models.py, ensure Payment model has the correct field:
 class Payment(models.Model):
-    fee_account = models.ForeignKey(FeeAccount, on_delete=models.CASCADE, related_name="payments")
+    fee = models.ForeignKey(Fee, on_delete=models.CASCADE, related_name="payments")  # This should be 'fee' not 'fee_account'
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateTimeField(auto_now_add=True)
     method = models.CharField(max_length=50, blank=True, null=True)
     transaction_id = models.CharField(max_length=64, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.fee_account} - {self.amount}"
+        return f"Payment: {self.amount} for {self.fee.student}"
+
+    # Remove the save method override if it's causing issues, or fix it:
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None  # Check if this is a new payment
+        super().save(*args, **kwargs)
+        
+        # Update the fee's paid_amount
+        if is_new:
+            self.fee.paid_amount += self.amount
+            self.fee.save()
+            
+            # Update FeeAccount balance
+            fee_account, created = FeeAccount.objects.get_or_create(student=self.fee.student)
+            fee_account.balance = self.fee.due_amount
+            fee_account.save()
 
 
 # ==============================
@@ -284,13 +326,16 @@ class Feedback(models.Model):
 
 
 class Message(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="messages")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="messages")  # Remove null=True, blank=True
     parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
     teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name="teacher_messages")
     subject = models.CharField(max_length=255)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Message: {self.subject} - {self.student.name if self.student else 'No student'}"
 
 # ==============================
 # Student Flags & Consent

@@ -139,10 +139,16 @@ class FeeAccountAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("fee_account", "amount", "date")
-    search_fields = ("fee_account__student__first_name", "fee_account__student__last_name")
-    list_filter = ("date",)
+    list_display = ("fee", "amount", "date", "method", "transaction_id")  # Changed from fee_account to fee
+    search_fields = ("fee__student__first_name", "fee__student__last_name", "transaction_id")
+    list_filter = ("date", "method")
+    readonly_fields = ("date",)
 
+    # Optional: Add a method to display student name
+    def student_name(self, obj):
+        return obj.fee.student.name if obj.fee and obj.fee.student else "N/A"
+    student_name.short_description = "Student"
+    
 
 # ----------------------
 # FEEDBACK

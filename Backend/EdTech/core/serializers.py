@@ -209,6 +209,7 @@ class StudentNestedSerializer(serializers.ModelSerializer):
         fields = ["id", "student_id", "name", "student_class", "status", "date_added"]
 
 
+# FIX: Correct the children field
 class ParentProfileSerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
 
@@ -217,7 +218,8 @@ class ParentProfileSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "children"]
 
     def get_children(self, obj):
-        students = Student.objects.filter(parent=obj)
+        # Use the correct related name
+        students = Student.objects.filter(parents=obj)
         return StudentNestedSerializer(students, many=True).data
 
 

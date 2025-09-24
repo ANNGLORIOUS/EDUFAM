@@ -146,21 +146,33 @@ class ParentProfileView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsParent]
     def get_object(self): return self.request.user
 
+# FIX: Correct the parent-student relationship
 class StudentSummaryView(generics.ListAPIView):
     serializer_class = StudentSummarySerializer
     permission_classes = [IsAuthenticated, IsParent]
-    def get_queryset(self): return Student.objects.filter(parent=self.request.user)
+    
+    def get_queryset(self):
+        # Use the correct relationship
+        return Student.objects.filter(parents=self.request.user)
+    
 
+# FIX: Correct the relationship path
 class StudentGradesView(generics.ListAPIView):
     serializer_class = StudentGradesSerializer
     permission_classes = [IsAuthenticated, IsParent]
+    
     def get_queryset(self):
-        qs = GradeRecord.objects.filter(student__parent=self.request.user)
-        sid, term = self.request.query_params.get("studentId"), self.request.query_params.get("term")
-        if sid: qs = qs.filter(student__id=sid)
-        if term: qs = qs.filter(term__name=term)
+        qs = GradeRecord.objects.filter(student__parents=self.request.user)
+        sid = self.request.query_params.get("studentId")
+        term = self.request.query_params.get("term")
+        
+        if sid:
+            qs = qs.filter(student__id=sid)
+        if term:
+            qs = qs.filter(term__name=term)
+            
         return qs.select_related("student", "subject", "term", "uploaded_by")
-
+    
 class ResultDownloadView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated, IsParent]
     def get(self, request, result_id):
@@ -347,9 +359,12 @@ def ussd_callback(request):
 
     # ✅ Find parent
     try:
-        parent = User.objects.get(phone_number=phone_number, user_type="parent")
+        parent = User.objects.get(phone_number=phone_number, role="parent")  # Fixed field name
     except User.DoesNotExist:
         return HttpResponse("END Your number is not registered as a parent. Please contact the school.", content_type="text/plain")
+    
+    # FIX: Correct student relationship
+    students = Student.objects.filter(parents=parent)  # Use the correct relationship
 
     # ✅ Track navigation path
     steps = text.split("*") if text else []

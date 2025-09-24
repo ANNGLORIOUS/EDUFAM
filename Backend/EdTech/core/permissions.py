@@ -11,6 +11,7 @@ class IsParent(permissions.BasePermission):
         )
 
 
+# FIX: Update the permission class
 class IsParentOfStudent(permissions.BasePermission):
     message = "You can only access your own children's data."
 
@@ -21,14 +22,23 @@ class IsParentOfStudent(permissions.BasePermission):
         if request.user.role != "parent":
             return False
 
+        # Handle different object types
         if isinstance(obj, Student):
             return request.user in obj.parents.all()
 
         if hasattr(obj, "student"):
             return request.user in obj.student.parents.all()
+            
+        # Handle Fee objects
+        if hasattr(obj, "fee") and hasattr(obj.fee, "student"):
+            return request.user in obj.fee.student.parents.all()
+            
+        # Handle other objects that might have student relationship
+        student = getattr(obj, 'student', None)
+        if student:
+            return request.user in student.parents.all()
 
         return False
-
 
 class IsTeacher(permissions.BasePermission):
     message = "You must be a teacher to access this resource."
