@@ -4,8 +4,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
+import { AuthProvider } from './context/AuthContext';
 import { ClerkProvider } from '@clerk/clerk-react';
 import { BrowserRouter } from 'react-router-dom';
+import { EventsProvider } from './context/EventsContext';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -17,7 +19,11 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <BrowserRouter>
-        <App />
+        <EventsProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </EventsProvider>
       </BrowserRouter>
     </ClerkProvider>
   </StrictMode>

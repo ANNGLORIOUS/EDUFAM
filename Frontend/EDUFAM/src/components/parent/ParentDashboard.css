@@ -1,5 +1,11 @@
+/* Force green background for parent dashboard sidebar, override global sidebar */
+.parent-dashboard-row .sidebar {
+  background: #43cea2 !important;
+}
 /* ParentDashboard.css */
-
+body{
+  margin-top: auto;
+}
 /* Child Profile Styles */
 .attendance-circle {
   width: 120px;
@@ -165,7 +171,68 @@ p {
   color: #6c757d !important;
 }
 
+/* Ensure navbar is above, dashboard/sidebar below */
+.navbar {
+  z-index: 1050;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.parent-dashboard-row {
+  margin-top: 100px !important;
+  min-height: calc(100vh - 100px - 80px); /* 100px navbar, 80px footer est. */
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar {
+  height: 100%;
+  min-height: 0;
+  max-height: calc(100vh - 100px - 80px); /* stop at footer */
+  background: #43cea2;
+  border-right: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-bottom: 40px;
+  overflow-y: auto;
+}
+
+.sidebar {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 2;
+}
+
+.parent-dashboard-content {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* If you have a dashboard tab section, ensure it is not hidden */
+.dashboard-tab-section {
+  margin-top: 0 !important;
+  position: relative;
+  z-index: 2;
+}
+
 /* Responsive Styles */
+@media (max-width: 768px) {
+  .attendance-circle {
+    width: 100px;
+    height: 100px;
+    border-width: 6px;
+  }
+  
+  .messages-container,
+  .chat-container {
+    height: 250px !important;
+  }
+}
+
 @media (max-width: 768px) {
   .attendance-circle {
     width: 100px;

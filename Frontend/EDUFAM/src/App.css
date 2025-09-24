@@ -1,9 +1,21 @@
-/* Main Layout Styling */
-/* App Layout */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 #root {
   min-height: 100vh;
 }
+body {
+  background-color: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
 
+/* Reset default margin and padding for body and #root */
+body #root {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+}
 .app-wrapper {
   display: flex;
   flex-direction: column; /* Change to column */
@@ -20,7 +32,7 @@
   flex: 1;
   min-height: 100vh;
   background-color: #f8f9fa;
-  /* transition: margin-left 0.3s ease; */
+
 }
 
 /* Dashboard Header */
@@ -119,13 +131,6 @@ main {
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
-/* Footer Styling */
-footer {
-  flex-shrink: 0;
-  width: 100%;
-  margin-top: auto;
-}
-
 /* Social Media Icons Styling */
 .social-icon {
   width: 40px;
@@ -191,22 +196,7 @@ footer {
 /* Add smooth transition for all hover effects */
 .social-icon {
   transition: all 0.3s ease !important;
-}
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-/* Reset default margin and padding for body and #root */
-body, #root {
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
-  height: 100vh;
-}
-
-/* Set default font for body */
-body {
-  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-}
+} 
 
 /* App container takes full height and uses flexbox for layout */
 .app-container {
@@ -228,17 +218,6 @@ main {
   height: 100%;
 }
 
-/* Overlay Welcome on Spline animation */
-.spline-welcome-container {
-  flex: 1 1 auto;
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  align-items: stretch;
-}
-
 .welcome-overlay {
   position: absolute;
   top: 50%;
@@ -254,11 +233,29 @@ main {
 }
 
 /* Footer styling */
-footer {
+footer.footer-fullwidth {
   flex-shrink: 0;
-  width: 100%;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
   margin-top: 0;
   padding-top: 0;
+  position: relative;
+  left: 0;
+  right: 0;
+}
+
+footer.footer-parent-dashboard {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+}
+
+.footer-inner {
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 2rem;
 }
 
 footer.bg-edufam-dark {
@@ -342,9 +339,94 @@ footer.bg-edufam-dark {
   min-height: calc(100vh - 56px - 120px);
   max-height: calc(100vh - 56px - 120px);
   overflow-y: auto;
-  border-right: 2px solid #e0e0e0 !important; /* Add visible separation */
+  border-right: none !important;
   background: transparent !important;
   z-index: 1;
+}
+
+/* Teacher Dashboard Specific Styles */
+.teacher-sidebar {
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+.teacher-nav .list-group-item {
+  background-color: transparent;
+  border: none !important;
+  color: #495057;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.teacher-nav .list-group-item:hover {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  transform: translateX(5px);
+}
+
+.teacher-nav .list-group-item.active {
+  background-color: #2196f3;
+  color: white;
+  font-weight: 600;
+}
+
+.teacher-nav .list-group-item i {
+  font-size: 1.1em;
+  width: 20px;
+}
+
+/* Teacher sidebar specific icon colors */
+.teacher-nav .bi-house-door {
+  color: #1976d2; /* blue for dashboard */
+}
+
+.teacher-nav .bi-clipboard-data {
+  color: #388e3c; /* green for results */
+}
+
+.teacher-nav .bi-calendar-plus {
+  color: #f57c00; /* orange for events */
+}
+
+.teacher-nav .bi-person-check {
+  color: #7b1fa2; /* purple for attendance */
+}
+
+.teacher-nav .list-group-item.active i {
+  color: white !important; /* white icons when active */
+}
+
+.teacher-content {
+  padding: 20px;
+  min-height: 80vh;
+}
+
+.teacher-content h3 {
+  color: #1976d2;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e3f2fd;
+}
+
+.teacher-sidebar .bg-light {
+  background-color: #fafafa !important;
+}
+
+.teacher-sidebar h5 {
+  color: #1976d2;
+  font-weight: 600;
+}
+
+/* Responsive design for teacher sidebar */
+@media (max-width: 768px) {
+  .teacher-sidebar {
+    position: relative !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+  
+  .teacher-content {
+    margin-left: 0 !important;
+  }
 }
 
 /* Ensure dashboard content fills available space */
@@ -358,7 +440,7 @@ footer.bg-edufam-dark {
   margin-top: 0 !important;
   padding-top: 0 !important;
   padding-left: 0 !important;
-  margin-left: 240px !important; /* Offset for sidebar width */
+  margin-left: 180px !important; /* Offset for sidebar width */
   position: relative;
   left: 0;
   width: auto;
