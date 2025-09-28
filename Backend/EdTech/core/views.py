@@ -16,6 +16,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from django.utils.timezone import now
 
+from .sms import send_sms
+
 
 from .models import (
     User, OTP, Student, Teacher, Parent, AttendanceRecord, GradeRecord, Message, Fee, Feedback,
@@ -151,6 +153,7 @@ class StudentSummaryView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsParent]
     def get_queryset(self): return Student.objects.filter(parent=self.request.user)
 
+
 class StudentGradesView(generics.ListAPIView):
     serializer_class = StudentGradesSerializer
     permission_classes = [IsAuthenticated, IsParent]
@@ -241,7 +244,12 @@ class FeedbackListView(generics.ListAPIView):
 class ConsentListView(generics.ListAPIView):
     serializer_class = ConsentSerializer
     permission_classes = [IsAuthenticated, IsParent]
-    def get_queryset(self): return Consent.objects.filter(student__parent=self.request.user)
+
+    def get_queryset(self):
+        user = self.request.user
+        return Consent.objects.filter(student__parent=user)  # if ForeignKey
+        # OR if ManyToMany:
+        # return Consent.objects.filter(student__parents=user)
 
 class ConsentUpdateView(generics.UpdateAPIView):
     serializer_class = ConsentSerializer
@@ -285,7 +293,6 @@ class AttendanceBulkUploadView(generics.CreateAPIView):
 
 class AttendanceReportView(APIView):
     def get(self, request, *args, **kwargs):
-        # Example: group attendance by student
         attendance_data = AttendanceRecord.objects.select_related("student").all()
 
         report = {}
@@ -329,95 +336,33 @@ class USSDConfigView(generics.CreateAPIView):
     queryset = USSDConfig.objects.all()
     serializer_class = USSDConfigSerializer
     permission_classes = [IsAuthenticated, IsAdmin]
+    
+class EventCreateView(generics.CreateAPIView):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
 
-@csrf_exempt
-def ussd_callback(request):
-    # ✅ Optional API Key check
-    api_key = request.headers.get("X-API-Key")
-    if api_key and api_key != getattr(settings, "AT_USSD_API_KEY", None):
-        return HttpResponse("END Unauthorized", content_type="text/plain")
+    def perform_create(self, serializer):
+        event = serializer.save()
+        recipients = list(Parent.objects.values_list("user__phone_number", flat=True))
+        event_date = event.start.strftime("%d %B %Y")  # e.g., 25 September 2025
+        message = f"📢 Dear Parent, upcoming event: {event.title} on {event_date}"
 
-    session_id = request.POST.get("sessionId")
-    phone_number = request.POST.get("phoneNumber")
-    text = request.POST.get("text", "")
+    
+        send_sms(recipients, message)
 
-    # ✅ Get dynamic menus
-    config = USSDConfig.objects.latest("updated_at")
-    menus = config.menu_json.get("menus", {})
 
-    # ✅ Find parent
-    try:
-        parent = User.objects.get(phone_number=phone_number, user_type="parent")
-    except User.DoesNotExist:
-        return HttpResponse("END Your number is not registered as a parent. Please contact the school.", content_type="text/plain")
+# class ConsentCreateView(generics.CreateAPIView):
+#     queryset = Consent.objects.all()
+#     serializer_class = ConsentSerializer
+#     permission_classes = [IsAuthenticated]  # or custom IsAdmin/IsTeacher
 
-    # ✅ Track navigation path
-    steps = text.split("*") if text else []
-    node, current = None, menus
-    for step in steps:
-        if step in current:
-            node = current[step]
-            current = node.get("children", {})
-        else:
-            return HttpResponse("END Invalid choice", content_type="text/plain")
-
-    # ✅ Handle school-specific actions
-    if node and node.get("action") == "student_summary":
-        students = parent.students.all()
-        if not students:
-            return HttpResponse("END No students linked to your account.", content_type="text/plain")
-        data = StudentSummarySerializer(students, many=True).data
-        msg = "CON Student Summary:\n" + "\n".join(
-            [f"- {s['name']} (Class {s['student_class']})" for s in data]
-        )
-        return HttpResponse(msg, content_type="text/plain")
-
-    elif node and node.get("action") == "fees":
-        student = parent.students.first()
-        if not student:
-            return HttpResponse("END No students linked to your account.", content_type="text/plain")
-        try:
-            fee = Fee.objects.get(student=student)
-            fee_data = FeeSerializer(fee).data
-            msg = (
-                f"END Fees for {student.name}:\n"
-                f"Total: {fee_data['total_fee']}\n"
-                f"Paid: {fee_data['paid_amount']}\n"
-                f"Balance: {fee_data['due_amount']}"
-            )
-            return HttpResponse(msg, content_type="text/plain")
-        except Fee.DoesNotExist:
-            return HttpResponse("END No fee records found.", content_type="text/plain")
-
-    elif node and node.get("action") == "consents":
-        consents = Consent.objects.filter(student__parent=parent)
-        if not consents:
-            return HttpResponse("END No consent records found.", content_type="text/plain")
-        data = ConsentSerializer(consents, many=True).data
-        msg = "CON Consents:\n" + "\n".join(
-            [f"- {c['consent_type']}: {c['status']}" for c in data]
-        )
-        return HttpResponse(msg, content_type="text/plain")
-
-    elif node and node.get("action") == "events":
-        events = Event.objects.filter(date__gte=now().date()).order_by("date")[:5]
-        if not events:
-            return HttpResponse("END No upcoming events.", content_type="text/plain")
-        data = EventSerializer(events, many=True).data
-        msg = "END Upcoming Events:\n" + "\n".join(
-            [f"- {e['title']} ({e['date']})" for e in data]
-        )
-        return HttpResponse(msg, content_type="text/plain")
-
-    # ✅ Handle plain END nodes
-    if node and node.get("type") == "END":
-        return HttpResponse(f"END {node.get('message', 'Goodbye')}", content_type="text/plain")
-
-    # ✅ Render generic menu text
-    if node:
-        options = "\n".join([f"{k}. {v['text']}" for k, v in current.items()])
-        return HttpResponse(f"CON {node['text']}\n{options}", content_type="text/plain")
-
-    # Default: show root menu
-    options = "\n".join([f"{k}. {v['text']}" for k, v in menus.items()])
-    return HttpResponse(f"CON Welcome to EDUFAM\n{options}", content_type="text/plain")
+#     def perform_create(self, serializer):
+#         consent = serializer.save()
+#         recipients = [
+#             p.user.phone_number for p in consent.parents.all() if p.user.phone_number
+#         ]
+#         message = f"📝 Consent required for {consent.student.name}: {consent.message}"
+#         if recipients:
+#             send_sms(recipients, message)
+#         else:
+#             print("⚠️ No parent phone numbers found for this consent. SMS not sent.")

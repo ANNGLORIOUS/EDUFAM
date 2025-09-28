@@ -66,7 +66,6 @@ class StudentAdmin(admin.ModelAdmin):
     list_display = ("id", "student_id", "first_name", "last_name", "status")
     search_fields = ("first_name", "last_name", "student_id", "parents__user__email")
     list_filter = ("status",)
-    filter_horizontal = ("parents",)
 
 
 # ----------------------

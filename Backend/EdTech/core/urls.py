@@ -1,6 +1,7 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views
+from . import ussd_views
 
 urlpatterns = [
     # ------------------
@@ -63,7 +64,11 @@ urlpatterns = [
     # Flags & Events
     # ------------------
     path("flags/", views.StudentFlagView.as_view(), name="student-flag"),
-    path("events/admin/", views.EventView.as_view(), name="events"),
+    # path("events/admin/", views.EventView.as_view(), name="events"),
+    
+    path("admin/events", views.EventCreateView.as_view(), name="events"),
+    # path("admin/consents", views.ConsentCreateView.as_view(), name="events"),
+
 
     # ------------------
     # Finance Endpoints
@@ -82,5 +87,7 @@ urlpatterns = [
     # ------------------
     path("audit-log/", views.AuditLogView.as_view(), name="audit-log"),
     path("ussd-config/", views.USSDConfigView.as_view(), name="ussd-config"),
-    path("ussd-callback/",views.ussd_callback, name="ussd-callback"),
+    # path("ussd-callback/",views.ussd_callback, name="ussd-callback"),
+    path("ussd/", ussd_views.ussd_callback, name="ussd"),
+
 ]

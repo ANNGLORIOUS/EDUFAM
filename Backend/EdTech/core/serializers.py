@@ -8,6 +8,7 @@ from phonenumber_field.serializerfields import PhoneNumberField
 from django.utils import timezone
 from datetime import timedelta
 import datetime
+from django.db.models import Avg
 
 from .models import (
     OTP,
@@ -226,11 +227,50 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = "__all__"
 
+ 
 class StudentSummarySerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    class_name = serializers.CharField(source="student_class.name", read_only=True)
+    attendance_summary = serializers.SerializerMethodField()
+    grade_summary = serializers.SerializerMethodField()
+
     class Meta:
         model = Student
-        fields = ["id", "student_id", "name", "student_class", "status"]
+        fields = [
+            "id", "student_id", "name", "class_name", "status",
+            "attendance_summary", "grade_summary"
+        ]
 
+    def get_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
+
+    def get_attendance_summary(self, obj):
+        records = obj.attendances.all()
+        if not records.exists():
+            return "No attendance recorded"
+        present_count = records.filter(status="present").count()
+        total = records.count()
+        percent = int((present_count / total) * 100)
+        return f"{percent}% attendance ({present_count}/{total} days)"
+
+    def get_grade_summary(self, obj):
+        grades = obj.results.all()
+        if not grades.exists():
+            return "No grades yet"
+
+        # Group averages by term
+        term_avgs = (
+            grades.values("term")        # assumes GradeRecord has a "term" field
+            .annotate(avg_marks=Avg("marks"))
+            .order_by("term")
+        )
+
+        summary_lines = []
+        for g in term_avgs:
+            summary_lines.append(f"Term {g['term']}: {g['avg_marks']:.1f}%")
+
+        return "Average per term:\n" + "\n".join(summary_lines)
+    
 class ParentSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
 
@@ -401,15 +441,17 @@ class FeedbackSerializer(serializers.ModelSerializer):
         read_only_fields = ("timestamp",)
 
 
+
+# serializers.py
 class ConsentSerializer(serializers.ModelSerializer):
-    student_name = serializers.CharField(
-        source="student.user.username", read_only=True
-    )
+    student_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Consent
         fields = ["id", "student", "student_name", "consent_type", "status", "created_at"]
 
+    def get_student_name(self, obj):
+        return f"{obj.student.first_name} {obj.student.last_name}"
 
 # ----------------------
 # EVENTS
@@ -446,3 +488,17 @@ class USSDConfigSerializer(serializers.ModelSerializer):
         model = USSDConfig
         fields = "__all__"
         read_only_fields = ("updated_at",)
+
+# events and consent 
+
+
+
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = "__all__"   
+
+class ConsentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Consent
+        fields = "__all__"

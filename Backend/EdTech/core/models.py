@@ -137,15 +137,27 @@ class Student(models.Model):
     last_name = models.CharField(max_length=100)
     student_class = models.ForeignKey(Class, on_delete=models.SET_NULL, null=True, related_name='students')
     status = models.CharField(max_length=32, default="Active")
-    parents = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="children", limit_choices_to={"role": "parent"}, blank=True)
+    parent = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="children",
+        limit_choices_to={"role": "parent"}
+    )    
     date_added = models.DateField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def name(self):
+        return f"{self.first_name} {self.last_name}"
+
     def __str__(self):
         return f"{self.student_id} - {self.first_name} {self.last_name}"
 
-
+    @property
+    def class_name(self):
+        return self.student_class.name if self.student_class else "N/A"
+    
 class Subject(models.Model):
     name = models.CharField(max_length=100)
     teacher = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, limit_choices_to={'role': 'teacher'}, related_name='subjects')
@@ -238,6 +250,10 @@ class Fee(models.Model):
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     due_date = models.DateField()
 
+    @property
+    def due(self):
+        return self.total_fee - self.paid_amount
+
     def __str__(self):
         return f"{self.student} - {self.term}"
 
@@ -284,13 +300,14 @@ class Feedback(models.Model):
 
 
 class Message(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="messages")
-    parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
-    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name="teacher_messages")
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="messages", null=True, blank=True)
+    parent = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages", null=True, blank=True, limit_choices_to={"role": "parent"})
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name="teacher_messages", null=True, blank=True, limit_choices_to={"role": "teacher"})
     subject = models.CharField(max_length=255)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
+
 
 # ==============================
 # Student Flags & Consent

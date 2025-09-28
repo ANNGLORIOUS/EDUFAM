@@ -50,8 +50,11 @@ DEBUG = True
 ALLOWED_HOSTS = [
     '127.0.0.1', 
     'localhost',
-    "50a67f897782.ngrok-free.app"
+    "259bc5a926c2.ngrok-free.app"
 ]
+# AT settings
+AFRICASTALKING_USERNAME = "sandbox"   # change to your AT app username
+AFRICASTALKING_API_KEY = os.getenv('AT_API_KEY')
 
 
 # Application definition
